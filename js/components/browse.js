@@ -52,10 +52,12 @@ const Browse = {
             });
         
         // Get all projects, filter out already liked AND own projects, and sort by distance
+        const userOwnedProjects = AppData.currentUser?.ownedProjects || [];
         this.projects = [...AppData.projects]
             .filter(p => {
-                // Filter out own projects
+                // Filter out own projects (check owner ID, originalId, and ownedProjects array)
                 if (p.owner && (p.owner.id === currentUserId || p.owner.id === currentUserIdAlt)) return false;
+                if (userOwnedProjects.includes(p.id)) return false;
                 // Filter out already liked
                 if (likedProjectIds.has(p.id)) return false;
                 return true;
@@ -135,7 +137,7 @@ const Browse = {
             <div class="browse-card bg-white rounded-xl shadow-sm overflow-hidden cursor-pointer hover:shadow-md transition ${isSwiped ? 'opacity-50' : ''}" data-id="${user.id}" data-type="user">
                 <!-- Photo & Distance Badge -->
                 <div class="relative">
-                    <img src="${user.photo}" alt="${user.name}" class="w-full h-40 object-cover">
+                    <img src="${user.photo || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(user.name || 'U') + '&background=6366f1&color=fff&size=400&font-size=0.4&length=1'}" alt="${user.name}" class="w-full h-40 object-cover">
                     <div class="absolute top-3 right-3">
                         <span class="px-2 py-1 bg-black/50 text-white text-xs rounded-full flex items-center gap-1">
                             <i class="ph ph-map-pin"></i> ${user.distance}
@@ -214,7 +216,7 @@ const Browse = {
                     <div class="mb-2">
                         <h3 class="text-lg font-bold text-gray-800">${project.title}</h3>
                         <div class="flex items-center gap-2 mt-1">
-                            <img src="${project.owner.photo}" alt="${project.owner.name}" class="w-5 h-5 rounded-full">
+                            <img src="${project.owner.photo || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(project.owner.name || 'U') + '&background=6366f1&color=fff&size=64&font-size=0.4&length=1'}" alt="${project.owner.name}" class="w-5 h-5 rounded-full">
                             <span class="text-sm text-gray-600">${project.owner.name}</span>
                         </div>
                     </div>
@@ -507,7 +509,7 @@ const Browse = {
                     
                     <div class="text-center mb-6">
                         <div class="w-16 h-16 mx-auto mb-3 rounded-full overflow-hidden">
-                            <img src="${user.photo}" alt="${user.name}" class="w-full h-full object-cover">
+                            <img src="${user.photo || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(user.name || 'U') + '&background=6366f1&color=fff&size=128&font-size=0.4&length=1'}" alt="${user.name}" class="w-full h-full object-cover">
                         </div>
                         <h2 class="text-xl font-bold text-gray-800">Match ${user.name} with a Project</h2>
                         <p class="text-gray-500 text-sm">Select which of your projects matches best with this person</p>
@@ -634,7 +636,7 @@ const Browse = {
                     </p>
                     ${projectInfo}
                     <div class="flex justify-center gap-4 mb-4">
-                        <img src="${user.photo}" class="w-20 h-20 rounded-full object-cover border-4 border-indigo-100">
+                        <img src="${user.photo || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(user.name || 'U') + '&background=6366f1&color=fff&size=200&font-size=0.4&length=1'}" class="w-20 h-20 rounded-full object-cover border-4 border-indigo-100">
                     </div>
                     <p class="text-sm text-gray-500 mb-4">Start a 24-hour chat to get to know each other!</p>
                     <div class="flex gap-2">

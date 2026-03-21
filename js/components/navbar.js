@@ -5,7 +5,7 @@ const Navbar = {
         const navbar = document.getElementById('navbar');
         
         // Get current user photo with fallback
-        const userPhoto = AppData.currentUser?.photo || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop&crop=face';
+        const userPhoto = AppData.currentUser?.photo || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(AppData.currentUser?.name || 'User') + '&background=6366f1&color=fff&size=200&font-size=0.4&length=1';
         
         navbar.innerHTML = `
             <div class="max-w-md mx-auto px-4 h-16 flex items-center justify-between">

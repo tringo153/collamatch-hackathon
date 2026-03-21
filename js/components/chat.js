@@ -85,7 +85,7 @@ const Chat = {
             html += `
                 <div onclick="Chat.openChat('${chat.id}')" class="bg-white rounded-xl p-4 shadow-sm flex items-center gap-4 cursor-pointer hover:shadow-md transition ${isUnread ? 'border-l-4 border-indigo-500' : ''} ${isExpiring ? 'border-l-4 border-amber-500' : ''}">
                     <div class="relative">
-                        <img src="${chat.participant.photo}" alt="${chat.participant.name}" class="w-14 h-14 rounded-full object-cover">
+                        <img src="${chat.participant.photo || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(chat.participant.name || 'U') + '&background=6366f1&color=fff&size=128&font-size=0.4&length=1'}" alt="${chat.participant.name}" class="w-14 h-14 rounded-full object-cover">
                         ${isExpiring ? 
                             `<span class="absolute -top-1 -right-1 w-5 h-5 bg-amber-500 rounded-full border-2 border-white flex items-center justify-center"><i class="ph ph-clock text-white text-xs"></i></span>` :
                             `<span class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></span>`
@@ -212,7 +212,7 @@ const Chat = {
                         <i class="ph ph-arrow-left text-xl"></i>
                     </button>
                     <div class="relative">
-                        <img src="${chat.participant.photo}" alt="${chat.participant.name}" class="w-10 h-10 rounded-full object-cover">
+                        <img src="${chat.participant.photo || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(chat.participant.name || 'U') + '&background=6366f1&color=fff&size=100&font-size=0.4&length=1'}" alt="${chat.participant.name}" class="w-10 h-10 rounded-full object-cover">
                         <span class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></span>
                     </div>
                     <div class="flex-1">

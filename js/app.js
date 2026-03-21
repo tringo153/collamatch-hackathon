@@ -204,7 +204,7 @@ const App = {
                 html += `
                     <div class="bg-white rounded-xl p-4 shadow-sm">
                         <div class="flex items-center gap-4">
-                            <img src="${user.photo}" alt="${user.name}" class="w-16 h-16 rounded-full object-cover">
+                            <img src="${user.photo || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(user.name || 'U') + '&background=6366f1&color=fff&size=128&font-size=0.4&length=1'}" alt="${user.name}" class="w-16 h-16 rounded-full object-cover">
                             <div class="flex-1">
                                 <h3 class="font-semibold text-gray-800">${user.name}</h3>
                                 <p class="text-sm text-gray-600">${user.location || ''}</p>
@@ -413,11 +413,28 @@ const App = {
         const main = document.querySelector('main');
         const user = AppData.currentUser;
         
+        // Check if user is logged in
+        if (!user) {
+            main.innerHTML = `
+                <section class="fixed inset-0 top-16 bottom-20 overflow-y-auto px-4 py-6">
+                    <div class="text-center py-12 max-w-md mx-auto">
+                        <i class="ph ph-user-circle text-5xl text-gray-300 mb-4"></i>
+                        <h3 class="text-lg font-semibold text-gray-600 mb-2">Not Logged In</h3>
+                        <p class="text-gray-400 mb-4">Please log in to view your profile</p>
+                        <button onclick="Auth.show()" class="px-6 py-2 bg-indigo-600 text-white rounded-full hover:bg-indigo-700 transition">
+                            Login
+                        </button>
+                    </div>
+                </section>
+            `;
+            return;
+        }
+        
         // Get user's owned projects
         const userProjects = AppData.projects.filter(p => user.ownedProjects && user.ownedProjects.includes(p.id));
         const interestedCount = user.interestedProjects ? user.interestedProjects.length : 0;
         
-        const skillsHTML = user.skills.map(skill => `
+        const skillsHTML = (user.skills || []).map(skill => `
             <div class="flex items-center gap-2 mb-1">
                 <span class="text-xs text-gray-600 w-20 truncate">${skill.name}</span>
                 <div class="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
@@ -427,11 +444,11 @@ const App = {
             </div>
         `).join('');
 
-        const goalsHTML = user.goals.map(goal => 
+        const goalsHTML = (user.goals || []).map(goal => 
             `<span class="skill-tag bg-indigo-50 text-indigo-700">${goal}</span>`
         ).join('');
 
-        const workStyleHTML = user.workStyle.map(style => 
+        const workStyleHTML = (user.workStyle || []).map(style => 
             `<span class="px-2 py-1 bg-green-50 text-green-700 rounded-full text-xs font-medium">${style}</span>`
         ).join('');
 
@@ -503,7 +520,7 @@ const App = {
                     <div class="relative mb-16">
                         <div class="w-full h-32 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl"></div>
                         <div class="absolute -bottom-12 left-1/2 transform -translate-x-1/2">
-                            <img src="${user.photo}" alt="${user.name}" class="w-24 h-24 rounded-full border-4 border-white shadow-md">
+                            <img src="${user.photo || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(user.name || 'U') + '&background=6366f1&color=fff&size=200&font-size=0.4&length=1'}" alt="${user.name}" class="w-24 h-24 rounded-full border-4 border-white shadow-md">
                         </div>
                     </div>
                     
@@ -512,7 +529,7 @@ const App = {
                             <div class="flex-1 text-center">
                                 <h2 class="text-2xl font-bold text-gray-800">${user.name}</h2>
                             </div>
-                            <button onclick="Signup.show()" class="px-4 py-2 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700 transition">
+                            <button onclick="App.showEditProfileModal()" class="px-4 py-2 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700 transition">
                                 <i class="ph ph-pencil"></i> Edit
                             </button>
                         </div>
@@ -586,6 +603,204 @@ const App = {
                 </div>
             </section>
         `;
+    },
+
+    showEditProfileModal() {
+        const user = AppData.currentUser;
+        if (!user) return;
+        
+        const container = document.getElementById('modal-container');
+        
+        const goals = ['Build a startup', 'Find co-founder', 'Build side projects', 'Learn new skills', 'Meet like-minded people', 'Freelance', 'Network', 'Open source'];
+        const workStyles = ['Deep Work', 'Async', 'Collaborative', 'Casual', 'Flexible', 'Agile'];
+        const availabilities = ['5-10 hrs/week', '10-15 hrs/week', '15-20 hrs/week', '20+ hrs/week'];
+        const lookingForOptions = ['Projects', 'Collaborators'];
+        
+        container.innerHTML = `
+            <div class="modal-overlay" onclick="event.target === this && Modal.close()">
+                <div class="modal-content p-6 max-h-[80vh] overflow-y-auto">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-xl font-bold">Edit Profile</h3>
+                        <button onclick="Modal.close()" class="text-gray-400 hover:text-gray-600">
+                            <i class="ph ph-x text-xl"></i>
+                        </button>
+                    </div>
+                    
+                    <form id="edit-profile-form" class="space-y-4">
+                        <!-- Photo -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Photo URL</label>
+                            <input type="text" id="edit-photo" value="${user.photo || ''}" 
+                                class="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                placeholder="https://...">
+                            <div class="mt-2">
+                                <img src="${user.photo || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(user.name || 'User') + '&background=6366f1&color=fff&size=100'}" 
+                                    id="edit-photo-preview" class="w-16 h-16 rounded-full object-cover mx-auto">
+                            </div>
+                        </div>
+                        
+                        <!-- Name -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                            <input type="text" id="edit-name" value="${user.name || ''}" 
+                                class="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                        </div>
+                        
+                        <!-- Location -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Location</label>
+                            <input type="text" id="edit-location" value="${user.location || ''}" 
+                                class="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                placeholder="City, State">
+                        </div>
+                        
+                        <!-- Bio -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Bio</label>
+                            <textarea id="edit-bio" rows="3" 
+                                class="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                placeholder="Tell us about yourself...">${user.bio || ''}</textarea>
+                        </div>
+                        
+                        <!-- Availability -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Availability</label>
+                            <select id="edit-availability" class="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                                ${availabilities.map(a => `<option value="${a}" ${user.availability === a ? 'selected' : ''}>${a}</option>`).join('')}
+                            </select>
+                        </div>
+                        
+                        <!-- Goals -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Goals</label>
+                            <div class="flex flex-wrap gap-2">
+                                ${goals.map(goal => `
+                                    <button type="button" class="edit-goal-btn px-3 py-2 rounded-full border text-sm font-medium transition ${(user.goals || []).includes(goal) ? 'border-indigo-500 bg-indigo-50 text-indigo-700' : 'border-gray-200 text-gray-600 hover:border-indigo-300'}" data-value="${goal}">
+                                        ${goal}
+                                    </button>
+                                `).join('')}
+                            </div>
+                        </div>
+                        
+                        <!-- Work Style -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Work Style</label>
+                            <div class="flex flex-wrap gap-2">
+                                ${workStyles.map(style => `
+                                    <button type="button" class="edit-workstyle-btn px-3 py-2 rounded-full border text-sm font-medium transition ${(user.workStyle || []).includes(style) ? 'border-green-500 bg-green-50 text-green-700' : 'border-gray-200 text-gray-600 hover:border-green-300'}" data-value="${style}">
+                                        ${style}
+                                    </button>
+                                `).join('')}
+                            </div>
+                        </div>
+                        
+                        <!-- Looking For -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Looking For</label>
+                            <div class="flex gap-2">
+                                ${lookingForOptions.map(opt => `
+                                    <button type="button" class="edit-lookingfor-btn flex-1 px-4 py-2 rounded-lg border text-sm font-medium transition ${(user.lookingFor || []).includes(opt) ? 'border-indigo-500 bg-indigo-50 text-indigo-700' : 'border-gray-200 text-gray-600 hover:border-indigo-300'}" data-value="${opt}">
+                                        ${opt}
+                                    </button>
+                                `).join('')}
+                            </div>
+                        </div>
+                        
+                        <button type="submit" class="w-full py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold rounded-xl hover:shadow-lg transition">
+                            Save Changes
+                        </button>
+                    </form>
+                </div>
+            </div>
+        `;
+        
+        // Photo preview
+        document.getElementById('edit-photo').addEventListener('input', (e) => {
+            const preview = document.getElementById('edit-photo-preview');
+            if (e.target.value) {
+                preview.src = e.target.value;
+            } else {
+                preview.src = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(user.name || 'User') + '&background=6366f1&color=fff&size=100';
+            }
+        });
+        
+        // Goal buttons
+        document.querySelectorAll('.edit-goal-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                btn.classList.toggle('border-indigo-500');
+                btn.classList.toggle('bg-indigo-50');
+                btn.classList.toggle('text-indigo-700');
+                btn.classList.toggle('border-gray-200');
+                btn.classList.toggle('text-gray-600');
+            });
+        });
+        
+        // Work style buttons
+        document.querySelectorAll('.edit-workstyle-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                btn.classList.toggle('border-green-500');
+                btn.classList.toggle('bg-green-50');
+                btn.classList.toggle('text-green-700');
+                btn.classList.toggle('border-gray-200');
+                btn.classList.toggle('text-gray-600');
+            });
+        });
+        
+        // Looking for buttons
+        document.querySelectorAll('.edit-lookingfor-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                btn.classList.toggle('border-indigo-500');
+                btn.classList.toggle('bg-indigo-50');
+                btn.classList.toggle('text-indigo-700');
+                btn.classList.toggle('border-gray-200');
+                btn.classList.toggle('text-gray-600');
+            });
+        });
+        
+        // Form submit
+        document.getElementById('edit-profile-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            // Get selected goals
+            const selectedGoals = [];
+            document.querySelectorAll('.edit-goal-btn.border-indigo-500').forEach(btn => {
+                selectedGoals.push(btn.dataset.value);
+            });
+            
+            // Get selected work styles
+            const selectedWorkStyles = [];
+            document.querySelectorAll('.edit-workstyle-btn.border-green-500').forEach(btn => {
+                selectedWorkStyles.push(btn.dataset.value);
+            });
+            
+            // Get selected looking for
+            const selectedLookingFor = [];
+            document.querySelectorAll('.edit-lookingfor-btn.border-indigo-500').forEach(btn => {
+                selectedLookingFor.push(btn.dataset.value);
+            });
+            
+            // Update user data
+            user.name = document.getElementById('edit-name').value;
+            user.photo = document.getElementById('edit-photo').value;
+            user.location = document.getElementById('edit-location').value;
+            user.bio = document.getElementById('edit-bio').value;
+            user.availability = document.getElementById('edit-availability').value;
+            user.goals = selectedGoals;
+            user.workStyle = selectedWorkStyles;
+            user.lookingFor = selectedLookingFor;
+            
+            // Save to database
+            await Database.saveCurrentUser(user);
+            
+            // Update navbar
+            Navbar.render();
+            
+            // Close modal
+            Modal.close();
+            
+            // Refresh profile page
+            App.showProfilePage();
+        });
     },
 
     formatDate(dateString) {

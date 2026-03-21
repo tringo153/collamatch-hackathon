@@ -721,6 +721,11 @@ const Database = {
         
         AppData.matches = matches;
         
+        // Get current user's original ID for filtering chats
+        const currentUserOriginalId = currentUser?.originalId || currentUserId;
+        
+        AppData.matches = matches;
+        
         // Generate chats - use existing from DB or create new
         const chats = [];
         matches.forEach(match => {
@@ -730,7 +735,7 @@ const Database = {
                 // Use existing chat from database
                 chats.push(existingChat);
             } else {
-                // Create new chat
+                // Create new chat with userId to identify ownership
                 chats.push({
                     id: match.chatId,
                     matchId: match.id,

@@ -79,7 +79,7 @@ const Modal = {
                     <div class="p-5 -mt-8 relative">
                         <!-- Name/Title -->
                         <div class="flex items-end gap-4 mb-3">
-                            ${!isProject ? `<img src="${item.photo}" alt="${item.name}" class="w-16 h-16 rounded-full border-4 border-white shadow-md">` : ''}
+                            ${!isProject ? `<img src="${item.photo || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(item.name || 'U') + '&background=6366f1&color=fff&size=128&font-size=0.4&length=1'}" alt="${item.name}" class="w-16 h-16 rounded-full border-4 border-white shadow-md">` : ''}
                             <div class="flex-1 pb-2">
                                 <h2 class="text-2xl font-bold text-gray-800">${title}</h2>
                                 ${ownerName ? `<p class="text-gray-600">${ownerName}</p>` : ''}
@@ -225,7 +225,7 @@ const Modal = {
                     <div class="relative">
                         <div class="w-full h-32 bg-gradient-to-r from-indigo-600 to-purple-600"></div>
                         <div class="absolute -bottom-12 left-6">
-                            <img src="${user.photo}" alt="${user.name}" class="w-24 h-24 rounded-full border-4 border-white shadow-md">
+                            <img src="${user.photo || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(user.name || 'U') + '&background=6366f1&color=fff&size=200&font-size=0.4&length=1'}" alt="${user.name}" class="w-24 h-24 rounded-full border-4 border-white shadow-md">
                         </div>
                     </div>
                     
@@ -313,8 +313,10 @@ const Modal = {
 
     // Show detailed project modal with private document
     showProjectDetailModal(project) {
-        // Check if current user owns this project
-        const isOwnProject = project.owner.id === AppData.currentUser.id;
+        // Check if current user owns this project (check both owner ID and ownedProjects)
+        const currentUserId = AppData.currentUser?.originalId || AppData.currentUser?.id;
+        const isOwnProject = project.owner.id === currentUserId || 
+            (AppData.currentUser?.ownedProjects && AppData.currentUser.ownedProjects.includes(project.id));
         
         // Skills HTML
         const skillsHTML = project.skills.map(skill => `
@@ -556,7 +558,7 @@ const Modal = {
                     <div class="relative">
                         <div class="w-full h-32 bg-gradient-to-r from-indigo-600 to-purple-600"></div>
                         <div class="absolute -bottom-12 left-6">
-                            <img src="${user.photo}" alt="${user.name}" class="w-24 h-24 rounded-full border-4 border-white shadow-md">
+                            <img src="${user.photo || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(user.name || 'U') + '&background=6366f1&color=fff&size=200&font-size=0.4&length=1'}" alt="${user.name}" class="w-24 h-24 rounded-full border-4 border-white shadow-md">
                         </div>
                     </div>
                     
@@ -682,7 +684,7 @@ const Modal = {
                 
                 <div class="flex items-center justify-center gap-3 mb-6">
                     <div class="w-16 h-16 rounded-full overflow-hidden border-2 border-white">
-                        <img src="${swipedUser.photo}" alt="${swipedUser.name}" class="w-full h-full object-cover">
+                        <img src="${swipedUser.photo || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(swipedUser.name || 'U') + '&background=6366f1&color=fff&size=128&font-size=0.4&length=1'}" alt="${swipedUser.name}" class="w-full h-full object-cover">
                     </div>
                     <i class="ph ph-arrow-right text-2xl text-gray-400"></i>
                     <div class="w-16 h-16 rounded-full overflow-hidden border-2 border-white bg-gradient-to-r from-green-500 to-emerald-500 flex items-center justify-center">
@@ -746,11 +748,11 @@ const Modal = {
                 
                 <div class="flex items-center justify-center gap-4 mb-8">
                     <div class="w-28 h-28 rounded-full overflow-hidden border-4 border-white">
-                        <img src="${AppData.currentUser.photo}" alt="You" class="w-full h-full object-cover">
+                        <img src="${AppData.currentUser.photo || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(AppData.currentUser.name || 'U') + '&background=6366f1&color=fff&size=200&font-size=0.4&length=1'}" alt="You" class="w-full h-full object-cover">
                     </div>
                     <i class="ph ph-heart text-4xl text-red-500"></i>
                     <div class="w-28 h-28 rounded-full overflow-hidden border-4 border-white">
-                        <img src="${user.photo}" alt="${user.name}" class="w-full h-full object-cover">
+                        <img src="${user.photo || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(user.name || 'U') + '&background=6366f1&color=fff&size=200&font-size=0.4&length=1'}" alt="${user.name}" class="w-full h-full object-cover">
                     </div>
                 </div>
                 
@@ -784,11 +786,11 @@ const Modal = {
                 
                 <div class="flex items-center justify-center gap-4 mb-8">
                     <div class="w-28 h-28 rounded-full overflow-hidden border-4 border-white">
-                        <img src="${AppData.currentUser.photo}" alt="You" class="w-full h-full object-cover">
+                        <img src="${AppData.currentUser.photo || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(AppData.currentUser.name || 'U') + '&background=6366f1&color=fff&size=200&font-size=0.4&length=1'}" alt="You" class="w-full h-full object-cover">
                     </div>
                     <i class="ph ph-heart text-4xl text-red-500"></i>
                     <div class="w-28 h-28 rounded-full overflow-hidden border-4 border-white">
-                        <img src="${item.photo || item.owner?.photo}" alt="${item.name || item.title}" class="w-full h-full object-cover">
+                        <img src="${item.photo || item.owner?.photo || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(item.name || item.title || 'U') + '&background=6366f1&color=fff&size=200&font-size=0.4&length=1'}" alt="${item.name || item.title}" class="w-full h-full object-cover">
                     </div>
                 </div>
                 

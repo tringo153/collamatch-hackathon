@@ -35,13 +35,24 @@ const Auth = {
     totalSteps: 3,
     
     async show() {
-        // Check if already logged in
-        const currentUser = await Database.getCurrentUser();
-        if (currentUser) {
-            // Already logged in, go to browse
-            Browse.init();
-            return;
-        }
+        // Always show login page first - don't auto-login
+        // User must explicitly log in each time
+        
+        // Reset signup data when showing auth page (after logout)
+        this.signupData = {
+            name: '',
+            email: '',
+            password: '',
+            confirmPassword: '',
+            photo: '',
+            bio: '',
+            location: '',
+            goals: [],
+            workStyle: [],
+            lookingFor: ['Projects', 'Collaborators']
+        };
+        this.currentStep = 0;
+        this.activeTab = 'login';
         
         this.render();
     },
@@ -247,7 +258,7 @@ const Auth = {
                 
                 <div class="space-y-3">
                     <div class="flex items-center gap-4 p-4 bg-gray-50 rounded-xl">
-                        <img src="${this.signupData.photo || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop&crop=face'}" class="w-14 h-14 rounded-full object-cover">
+                        <img src="${this.signupData.photo || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(this.signupData.name || 'User') + '&background=6366f1&color=fff&size=200&font-size=0.4&length=1'}" class="w-14 h-14 rounded-full object-cover">
                         <div>
                             <h3 class="text-lg font-bold text-gray-800">${this.signupData.name || 'Your Name'}</h3>
                             <p class="text-sm text-gray-500">${this.signupData.email || 'your@email.com'}</p>
@@ -382,6 +393,9 @@ const Auth = {
             const bottomNav = document.getElementById('bottom-nav');
             if (bottomNav) bottomNav.classList.remove('hidden');
             
+            // Re-render navbar to update profile image
+            Navbar.render();
+            
             // Go to browse
             Browse.init();
         } else {
@@ -429,7 +443,7 @@ const Auth = {
             email: this.signupData.email,
             password: this.signupData.password,
             name: this.signupData.name,
-            photo: this.signupData.photo || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop&crop=face',
+            photo: this.signupData.photo || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(this.signupData.name || 'User') + '&background=6366f1&color=fff&size=200&font-size=0.4&length=1',
             bio: this.signupData.bio || '',
             location: this.signupData.location || '',
             availability: '10-15 hrs/week',
@@ -467,6 +481,9 @@ const Auth = {
         if (navbar) navbar.classList.remove('hidden');
         const bottomNav = document.getElementById('bottom-nav');
         if (bottomNav) bottomNav.classList.remove('hidden');
+        
+        // Re-render navbar to update profile image
+        Navbar.render();
         
         alert('Account created! Welcome to CollaMatch!');
         
