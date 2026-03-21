@@ -178,13 +178,15 @@ const App = {
                 <h2 class="text-2xl font-bold text-gray-800 mb-4 max-w-md mx-auto">Your Matches</h2>
                 
                 <!-- Tabs -->
-                <div class="flex items-center justify-center gap-2 mb-4 p-1 bg-gray-100 rounded-xl max-w-md mx-auto">
-                    <button class="match-tab flex-1 px-4 py-2 rounded-lg text-sm font-medium transition bg-white text-indigo-600 shadow-sm" data-tab="people" onclick="App.switchMatchTab('people')">
-                        <i class="ph ph-users mr-1"></i> People Who Liked You (${usersWhoLikedYou.length})
-                    </button>
-                    <button class="match-tab flex-1 px-4 py-2 rounded-lg text-sm font-medium transition text-gray-500" data-tab="projects" onclick="App.switchMatchTab('projects')">
-                        <i class="ph ph-rocket-launch mr-1"></i> Your Projects (${interestedInMyProjects.length})
-                    </button>
+                <div class="sticky top-16 z-10 bg-gray-50 -mx-4 px-4 py-2 mb-4">
+                    <div class="flex items-center justify-center gap-2 p-1 bg-gray-100 rounded-xl max-w-md mx-auto">
+                        <button class="match-tab flex-1 px-4 py-2 rounded-lg text-sm font-medium transition bg-white text-indigo-600 shadow-sm" data-tab="people" onclick="App.switchMatchTab('people')">
+                            <i class="ph ph-users mr-1"></i> People (${usersWhoLikedYou.length})
+                        </button>
+                        <button class="match-tab flex-1 px-4 py-2 rounded-lg text-sm font-medium transition text-gray-500" data-tab="projects" onclick="App.switchMatchTab('projects')">
+                            <i class="ph ph-rocket-launch mr-1"></i> Projects (${interestedInMyProjects.length})
+                        </button>
+                    </div>
                 </div>
                 
                 <!-- People Who Liked You -->

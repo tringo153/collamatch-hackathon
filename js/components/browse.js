@@ -85,13 +85,15 @@ const Browse = {
                     </div>
                     
                     <!-- Tabs -->
-                    <div class="flex items-center justify-center gap-2 mb-6 p-1 bg-gray-100 rounded-xl">
-                        <button class="browse-tab flex-1 px-4 py-2 rounded-lg text-sm font-medium transition ${this.activeTab === 'users' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}" data-tab="users">
-                            <i class="ph ph-users mr-1"></i> People
-                        </button>
-                        <button class="browse-tab flex-1 px-4 py-2 rounded-lg text-sm font-medium transition ${this.activeTab === 'projects' ? 'bg-white text-green-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}" data-tab="projects">
-                            <i class="ph ph-rocket-launch mr-1"></i> Projects
-                        </button>
+                    <div class="sticky top-16 z-10 bg-gray-50 -mx-4 px-4 py-3 mb-4">
+                        <div class="flex items-center justify-center gap-2 p-1 bg-gray-100 rounded-xl max-w-lg mx-auto">
+                            <button class="browse-tab flex-1 px-4 py-2 rounded-lg text-sm font-medium transition ${this.activeTab === 'users' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}" data-tab="users">
+                                <i class="ph ph-users mr-1"></i> People
+                            </button>
+                            <button class="browse-tab flex-1 px-4 py-2 rounded-lg text-sm font-medium transition ${this.activeTab === 'projects' ? 'bg-white text-green-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}" data-tab="projects">
+                                <i class="ph ph-rocket-launch mr-1"></i> Projects
+                            </button>
+                        </div>
                     </div>
                     
                     <!-- Cards List -->
