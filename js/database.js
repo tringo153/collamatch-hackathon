@@ -148,6 +148,19 @@ const Database = {
         return user;
     },
     
+    async saveCollaborator(user) {
+        // Save collaborator to 'users' store
+        await this.add('users', user);
+        // Also update in-memory AppData.collaborators
+        const index = AppData.collaborators.findIndex(c => c.id === user.id);
+        if (index >= 0) {
+            AppData.collaborators[index] = user;
+        } else {
+            AppData.collaborators.push(user);
+        }
+        return user;
+    },
+    
     async setCurrentUserId(userId) {
         const user = await this.getById('users', userId);
         if (user) {

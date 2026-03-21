@@ -88,88 +88,84 @@ const App = {
         const currentUserId = AppData.currentUser?.id;
         const currentUserIdAlt = AppData.currentUser?.originalId || (currentUserId === 'current' ? 'user-1' : currentUserId);
         
-        // Get users who liked current user
-        // Check both: 1) collaborators' likesSent (who liked current user), 2) current user's likesReceived
-        const usersWhoLikedYou = [];
-        const currentUserLikesSent = AppData.currentUser?.likesSent || [];
+        // ===== PEOPLE TAB =====
+        // 1. Users who liked currUser's projects (from likesReceived with fromType='project')
+        const usersWhoLikedMyProjects = [];
+        const userOwnedProjects = AppData.currentUser?.ownedProjects || [];
+        const myProjects = AppData.projects.filter(p => 
+            p.owner && (p.owner.id === currentUserId || p.owner.id === currentUserIdAlt || userOwnedProjects.includes(p.id))
+        );
+        
         const currentUserLikesReceived = AppData.currentUser?.likesReceived || [];
         
-        AppData.collaborators.forEach(collab => {
-            // Skip if this is the current user
-            if (collab.id === currentUserId || collab.id === currentUserIdAlt) {
-                return;
-            }
-            
-            let liked = false;
-            
-            // Check 1: Does this collaborator's likesSent include current user?
-            if (collab.likesSent && Array.isArray(collab.likesSent)) {
-                liked = collab.likesSent.some(like => 
-                    like.targetId === currentUserId || 
-                    like.targetId === currentUserIdAlt ||
-                    like.targetId === 'current'
-                );
-            }
-            
-            // Check 2: Does current user's likesReceived include this collaborator?
-            if (!liked && currentUserLikesReceived.length > 0) {
-                liked = currentUserLikesReceived.some(like => 
-                    like.fromId === collab.id
-                );
-            }
-            
-            // Skip if already matched (current user already liked them back)
-            if (liked) {
-                const alreadyMatched = currentUserLikesSent.some(like => 
-                    like.targetId === collab.id || 
-                    like.targetId === collab.originalId
-                );
-                
-                if (!alreadyMatched) {
-                    usersWhoLikedYou.push({
+        currentUserLikesReceived.forEach(like => {
+            if (like.fromType === 'project' && like.projectId) {
+                const collab = AppData.collaborators.find(c => c.id === like.fromId);
+                const project = AppData.projects.find(p => p.id === like.projectId);
+                if (collab && project) {
+                    usersWhoLikedMyProjects.push({
                         id: collab.id,
                         name: collab.name,
                         photo: collab.photo,
                         bio: collab.bio,
-                        skills: collab.skills,
-                        location: collab.location
+                        project: {
+                            id: project.id,
+                            title: project.title
+                        }
                     });
                 }
             }
         });
         
-        // Get current user's projects
-        const myProjects = AppData.projects.filter(p => 
-            p.owner && (p.owner.id === currentUserId || p.owner.id === currentUserIdAlt)
-        );
+        // 2. Users who matched currUser profile but skipped the project (from likesReceived where there's no matchProjectId and no fromType='project')
+        const usersWhoSkippedMatch = [];
         
-        // Get users interested in my projects (who haven't been matched yet)
-        const interestedInMyProjects = [];
-        myProjects.forEach(project => {
-            AppData.collaborators.forEach(collab => {
-                if (collab.interestedProjects && collab.interestedProjects.includes(project.id)) {
-                    // Check if already matched
-                    const currentUserLikes = AppData.currentUser?.likesSent || [];
-                    const alreadyMatched = currentUserLikes.some(like => 
-                        like.targetId === collab.id
-                    );
-                    
-                    if (!alreadyMatched) {
-                        interestedInMyProjects.push({
-                            user: {
-                                id: collab.id,
-                                name: collab.name,
-                                photo: collab.photo,
-                                bio: collab.bio
-                            },
-                            project: {
-                                id: project.id,
-                                title: project.title
+        currentUserLikesReceived.forEach(like => {
+            const collab = AppData.collaborators.find(c => c.id === like.fromId);
+            // Show users who skipped (no matchProjectId) and didn't like a project (no fromType='project')
+            if (collab && !like.matchProjectId && like.fromType !== 'project') {
+                usersWhoSkippedMatch.push({
+                    id: collab.id,
+                    name: collab.name,
+                    photo: collab.photo,
+                    bio: collab.bio
+                });
+            }
+        });
+        
+        // Combine both for People tab
+        let peopleTabList = [...usersWhoLikedMyProjects, ...usersWhoSkippedMatch];
+        
+        // Filter out users who have already been matched (current user already liked them back)
+        const currentUserLikesSent = AppData.currentUser?.likesSent || [];
+        peopleTabList = peopleTabList.filter(person => {
+            const alreadyLiked = currentUserLikesSent.some(like => 
+                like.targetId === person.id || 
+                like.targetId === person.originalId
+            );
+            return !alreadyLiked;
+        });
+        
+        // ===== PROJECTS TAB =====
+        // Projects that other users matched to currUser (from likesSent with projectId)
+        const matchedProjects = [];
+        
+        AppData.collaborators.forEach(collab => {
+            if (collab.likesSent) {
+                collab.likesSent.forEach(like => {
+                    if (like.targetId === currentUserId || like.targetId === currentUserIdAlt || like.targetId === 'current') {
+                        if (like.projectId) {
+                            const project = AppData.projects.find(p => p.id === like.projectId);
+                            if (project) {
+                                matchedProjects.push({
+                                    project: project,
+                                    matchedBy: collab.name
+                                });
                             }
-                        });
+                        }
                     }
-                }
-            });
+                });
+            }
         });
         
         // Render page with tabs
@@ -181,10 +177,10 @@ const App = {
                 <div class="sticky top-16 z-10 bg-gray-50 -mx-4 px-4 py-2 mb-4">
                     <div class="flex items-center justify-center gap-2 p-1 bg-gray-100 rounded-xl max-w-md mx-auto">
                         <button class="match-tab flex-1 px-4 py-2 rounded-lg text-sm font-medium transition bg-white text-indigo-600 shadow-sm" data-tab="people" onclick="App.switchMatchTab('people')">
-                            <i class="ph ph-users mr-1"></i> People (${usersWhoLikedYou.length})
+                            <i class="ph ph-users mr-1"></i> People (${peopleTabList.length})
                         </button>
                         <button class="match-tab flex-1 px-4 py-2 rounded-lg text-sm font-medium transition text-gray-500" data-tab="projects" onclick="App.switchMatchTab('projects')">
-                            <i class="ph ph-rocket-launch mr-1"></i> Projects (${interestedInMyProjects.length})
+                            <i class="ph ph-rocket-launch mr-1"></i> Projects (${matchedProjects.length})
                         </button>
                     </div>
                 </div>
@@ -193,7 +189,7 @@ const App = {
                 <div id="match-people" class="match-content space-y-4 max-w-md mx-auto">
         `;
         
-        if (usersWhoLikedYou.length === 0) {
+        if (peopleTabList.length === 0) {
             html += `
                 <div class="text-center py-12">
                     <i class="ph ph-heart text-5xl text-gray-300 mb-4"></i>
@@ -202,7 +198,8 @@ const App = {
                 </div>
             `;
         } else {
-            usersWhoLikedYou.forEach(user => {
+            peopleTabList.forEach(user => {
+                const projectInfo = user.project ? `<p class="text-xs text-indigo-600">Interested in: ${user.project.title}</p>` : `<p class="text-xs text-indigo-600">Liked your profile</p>`;
                 html += `
                     <div class="bg-white rounded-xl p-4 shadow-sm">
                         <div class="flex items-center gap-4">
@@ -210,11 +207,11 @@ const App = {
                             <div class="flex-1">
                                 <h3 class="font-semibold text-gray-800">${user.name}</h3>
                                 <p class="text-sm text-gray-600">${user.location || ''}</p>
-                                <p class="text-xs text-indigo-600">Liked your profile</p>
+                                ${projectInfo}
                             </div>
                         </div>
                         <div class="mt-3 flex gap-2">
-                            <button onclick="App.likeBack('${user.id}', 'user')" class="flex-1 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition">
+                            <button onclick="App.likeBack('${user.id}', 'user', '${user.project?.id || ''}')" class="flex-1 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition">
                                 <i class="ph ph-heart mr-1"></i> Like Back
                             </button>
                             <button onclick="Modal.showUserDetailModal(AppData.collaborators.find(u => u.id === '${user.id}'))" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50 transition">
@@ -233,28 +230,30 @@ const App = {
                 <div id="match-projects" class="match-content space-y-4 max-w-md mx-auto hidden">
         `;
         
-        if (interestedInMyProjects.length === 0) {
+        if (matchedProjects.length === 0) {
             html += `
                 <div class="text-center py-12">
                     <i class="ph ph-rocket-launch text-5xl text-gray-300 mb-4"></i>
-                    <h3 class="text-lg font-semibold text-gray-600 mb-2">No Interest Yet</h3>
+                    <h3 class="text-lg font-semibold text-gray-600 mb-2">No Project Matches Yet</h3>
                     <p class="text-gray-400">Create projects to attract collaborators!</p>
                 </div>
             `;
         } else {
-            interestedInMyProjects.forEach(item => {
+            matchedProjects.forEach(item => {
                 html += `
                     <div class="bg-white rounded-xl p-4 shadow-sm">
                         <div class="flex items-center gap-4">
-                            <img src="${item.user.photo}" alt="${item.user.name}" class="w-12 h-12 rounded-full object-cover">
+                            <div class="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center">
+                                <i class="ph ph-rocket-launch text-xl text-indigo-600"></i>
+                            </div>
                             <div class="flex-1">
-                                <h3 class="font-semibold text-gray-800">${item.user.name}</h3>
-                                <p class="text-sm text-gray-600">Interested in: ${item.project.title}</p>
+                                <h3 class="font-semibold text-gray-800">${item.project.title}</h3>
+                                <p class="text-sm text-gray-600">Matched by: ${item.matchedBy}</p>
                             </div>
                         </div>
                         <div class="mt-3 flex gap-2">
-                            <button onclick="App.likeBack('${item.user.id}', 'user', '${item.project.id}')" class="flex-1 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition">
-                                <i class="ph ph-heart mr-1"></i> Like Back
+                            <button onclick="Modal.showProjectDetailModal(AppData.projects.find(p => p.id === '${item.project.id}'))" class="flex-1 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition">
+                                <i class="ph ph-eye mr-1"></i> View Project
                             </button>
                         </div>
                     </div>
@@ -290,6 +289,25 @@ const App = {
             timestamp: new Date().toISOString()
         });
         
+        // Also add to current user's likesReceived to mark as matched (for the matches page logic)
+        if (!AppData.currentUser.likesReceived) {
+            AppData.currentUser.likesReceived = [];
+        }
+        
+        // Check if there's already an entry in likesReceived from this target
+        const existingReceiveIndex = AppData.currentUser.likesReceived.findIndex(like => like.fromId === targetId);
+        if (existingReceiveIndex >= 0) {
+            // Update existing entry with matchProjectId
+            AppData.currentUser.likesReceived[existingReceiveIndex].matchProjectId = projectId;
+        } else {
+            // Add new entry
+            AppData.currentUser.likesReceived.push({
+                fromId: targetId,
+                matchProjectId: projectId,
+                timestamp: new Date().toISOString()
+            });
+        }
+        
         // Save to database
         await Database.saveCurrentUser(AppData.currentUser);
         
@@ -306,6 +324,24 @@ const App = {
             
             if (likedUsBack) {
                 isMatch = true;
+                
+                // Update target user's likesReceived to mark as matched
+                if (!targetUser.likesReceived) {
+                    targetUser.likesReceived = [];
+                }
+                const targetReceiveIndex = targetUser.likesReceived.findIndex(like => like.fromId === currentUserIdAlt);
+                if (targetReceiveIndex >= 0) {
+                    targetUser.likesReceived[targetReceiveIndex].matchProjectId = projectId;
+                } else {
+                    targetUser.likesReceived.push({
+                        fromId: currentUserIdAlt,
+                        matchProjectId: projectId,
+                        timestamp: new Date().toISOString()
+                    });
+                }
+                
+                // Save target user to database
+                await Database.saveCollaborator(targetUser);
                 
                 // Create match
                 const matchId = `match-${Date.now()}`;

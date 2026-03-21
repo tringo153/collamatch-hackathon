@@ -299,7 +299,7 @@ const Modal = {
                                 <i class="ph ph-x"></i> Pass
                             </button>
                             <button onclick="Modal.close(); setTimeout(() => Browse.handleAction('${user.id}', 'user', 'like'), 200);" class="flex-1 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white font-semibold rounded-xl hover:shadow-lg transition">
-                                <i class="ph ph-heart"></i> Like
+                                <i class="ph ph-handshake"></i> Match
                             </button>
                         </div>
                     </div>
@@ -696,9 +696,14 @@ const Modal = {
                     ${projectsHTML}
                 </div>
                 
-                <button onclick="Modal.closeMatch()" class="px-8 py-3 bg-transparent border-2 border-white text-white font-semibold rounded-full hover:bg-white/10 transition w-full">
-                    Cancel
-                </button>
+                <div class="flex gap-3">
+                    <button onclick="Modal.skipProjectMatch()" class="flex-1 px-8 py-3 bg-transparent border-2 border-white text-white font-semibold rounded-full hover:bg-white/10 transition">
+                        Skip
+                    </button>
+                    <button onclick="Modal.closeMatch()" class="flex-1 px-8 py-3 bg-transparent border-2 border-white text-white font-semibold rounded-full hover:bg-white/10 transition">
+                        Cancel
+                    </button>
+                </div>
             </div>
         `;
 
@@ -706,13 +711,46 @@ const Modal = {
         popup.classList.remove('hidden');
     },
 
-    selectProjectForMatch(projectId) {
+    async selectProjectForMatch(projectId) {
         if (!this._pendingMatch) return;
         
         const { user, userProjects } = this._pendingMatch;
         const selectedProject = userProjects.find(p => p.id === projectId);
         
         if (!selectedProject) return;
+        
+        // Add to current user's interestedProjects (we're interested in this project)
+        if (!AppData.currentUser.interestedProjects) {
+            AppData.currentUser.interestedProjects = [];
+        }
+        if (!AppData.currentUser.interestedProjects.includes(projectId)) {
+            AppData.currentUser.interestedProjects.push(projectId);
+        }
+        
+        // Save current user to database
+        await Database.saveCurrentUser(AppData.currentUser);
+        
+        // Also add to the project owner's data so they can see us in their People tab
+        const projectOwner = AppData.collaborators.find(u => u.id === selectedProject.owner.id);
+        if (projectOwner) {
+            if (!projectOwner.likesReceived) {
+                projectOwner.likesReceived = [];
+            }
+            const currentUserId = AppData.currentUser.originalId || (AppData.currentUser.id === 'current' ? 'user-1' : AppData.currentUser.id);
+            
+            // Check if already exists
+            const existingIndex = projectOwner.likesReceived.findIndex(l => l.fromId === currentUserId);
+            if (existingIndex === -1) {
+                projectOwner.likesReceived.push({
+                    fromId: currentUserId,
+                    fromType: 'project',
+                    projectId: projectId,
+                    timestamp: new Date().toISOString()
+                });
+                // Update in database using saveCollaborator
+                await Database.saveCollaborator(projectOwner);
+            }
+        }
         
         // Create the match with the selected project
         const matchItem = {
@@ -735,6 +773,33 @@ const Modal = {
         setTimeout(() => {
             this.showMatchWithProject(user, selectedProject);
         }, 300);
+    },
+    
+    async skipProjectMatch() {
+        if (!this._pendingMatch) return;
+        
+        const { user } = this._pendingMatch;
+        
+        // Add to current user's likesReceived (to track that we skipped this user)
+        const currentUserActualId = AppData.currentUser.originalId || (AppData.currentUser.id === 'current' ? 'user-1' : AppData.currentUser.id);
+        
+        if (!AppData.currentUser.likesReceived) {
+            AppData.currentUser.likesReceived = [];
+        }
+        AppData.currentUser.likesReceived.push({
+            fromId: user.id,
+            fromType: 'user',
+            timestamp: new Date().toISOString()
+        });
+        
+        // Save to database
+        await Database.saveCurrentUser(AppData.currentUser);
+        
+        // Clear pending match
+        this._pendingMatch = null;
+        
+        // Close the modal
+        this.closeMatch();
     },
 
     showMatchWithProject(user, project) {

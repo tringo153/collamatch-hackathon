@@ -342,9 +342,13 @@ const Browse = {
             if (type === 'user') {
                 const user = AppData.collaborators.find(u => u.id === id);
                 if (user) {
-                    // Get user's projects
+                    // Get user's projects (check owner ID, originalId, and ownedProjects array)
+                    const currentUserId = AppData.currentUser.id;
+                    const currentUserIdAlt = AppData.currentUser.originalId || (currentUserId === 'current' ? 'user-1' : currentUserId);
+                    const userOwnedProjects = AppData.currentUser.ownedProjects || [];
+                    
                     const userProjects = AppData.projects.filter(p => 
-                        p.owner && p.owner.id === AppData.currentUser.id
+                        p.owner && (p.owner.id === currentUserId || p.owner.id === currentUserIdAlt || userOwnedProjects.includes(p.id))
                     );
                     
                     if (userProjects.length > 0) {
@@ -369,22 +373,67 @@ const Browse = {
             timestamp: new Date().toISOString()
         });
         
-        // Also update the target user's likesReceived
+        const currentUserActualId = AppData.currentUser.originalId || (AppData.currentUser.id === 'current' ? 'user-1' : AppData.currentUser.id);
+        
+        // If liking a project, add to current user's interestedProjects AND update project owner
+        if (type === 'project') {
+            const project = AppData.projects.find(p => p.id === id);
+            if (project) {
+                // Add to current user's interestedProjects
+                if (!AppData.currentUser.interestedProjects) {
+                    AppData.currentUser.interestedProjects = [];
+                }
+                if (!AppData.currentUser.interestedProjects.includes(project.id)) {
+                    AppData.currentUser.interestedProjects.push(project.id);
+                }
+                
+                // Also add to the project owner's likesReceived so they see us in their People tab
+                const projectOwner = AppData.collaborators.find(u => u.id === project.owner.id);
+                if (projectOwner) {
+                    if (!projectOwner.likesReceived) {
+                        projectOwner.likesReceived = [];
+                    }
+                    // Check if already exists
+                    const existingIndex = projectOwner.likesReceived.findIndex(l => l.fromId === currentUserActualId);
+                    if (existingIndex === -1) {
+                        projectOwner.likesReceived.push({
+                            fromId: currentUserActualId,
+                            fromType: 'project',
+                            projectId: project.id,
+                            timestamp: new Date().toISOString()
+                        });
+                        // Update in database
+                        await Database.saveCollaborator(projectOwner);
+                    }
+                }
+            }
+        }
+        
+        // Update target user based on whether a project was selected
         if (type === 'user') {
             const targetUser = AppData.collaborators.find(u => u.id === id);
             if (targetUser) {
-                if (!targetUser.likesReceived) {
-                    targetUser.likesReceived = [];
+                if (selectedProject) {
+                    // If project selected - add to current user's interestedProjects (we're interested in their project)
+                    if (!AppData.currentUser.interestedProjects) {
+                        AppData.currentUser.interestedProjects = [];
+                    }
+                    if (!AppData.currentUser.interestedProjects.includes(selectedProject.id)) {
+                        AppData.currentUser.interestedProjects.push(selectedProject.id);
+                    }
+                } else {
+                    // No project - add to target user's likesReceived (people-based match)
+                    if (!targetUser.likesReceived) {
+                        targetUser.likesReceived = [];
+                    }
+                    targetUser.likesReceived.push({
+                        fromId: currentUserActualId,
+                        fromType: 'user',
+                        timestamp: new Date().toISOString()
+                    });
+                    // Update in database
+                    await Database.saveCollaborator(targetUser);
                 }
-                // Get current user's actual ID
-                const currentUserActualId = AppData.currentUser.originalId || (AppData.currentUser.id === 'current' ? 'user-1' : AppData.currentUser.id);
-                targetUser.likesReceived.push({
-                    fromId: currentUserActualId,
-                    fromType: 'user',
-                    timestamp: new Date().toISOString()
-                });
-                // Update in database
-                await Database.updateUser(targetUser);
             }
         }
         
