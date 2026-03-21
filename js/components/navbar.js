@@ -4,24 +4,27 @@ const Navbar = {
     render() {
         const navbar = document.getElementById('navbar');
         
+        // Get current user photo with fallback
+        const userPhoto = AppData.currentUser?.photo || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop&crop=face';
+        
         navbar.innerHTML = `
             <div class="max-w-md mx-auto px-4 h-16 flex items-center justify-between">
                 <div class="flex items-center gap-2">
                     <div class="w-10 h-10 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl flex items-center justify-center">
                         <i class="ph ph-handshake text-white text-xl"></i>
                     </div>
-                    <span class="text-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">SynCo</span>
+                    <span class="text-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">CollaMatch</span>
                 </div>
-                <div class="flex items-center gap-3">
+                <div class="flex items-center gap-2">
                     <button id="btn-notifications" class="p-2 text-gray-500 hover:text-gray-700 transition relative">
                         <i class="ph ph-bell text-xl"></i>
                         <span class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
                     </button>
-                    <button id="btn-settings" class="p-2 text-gray-500 hover:text-gray-700 transition">
-                        <i class="ph ph-gear text-xl"></i>
+                    <button id="btn-logout" class="p-2 text-gray-500 hover:text-red-500 transition" title="Logout">
+                        <i class="ph ph-sign-out text-xl"></i>
                     </button>
                     <button id="btn-profile" class="w-9 h-9 rounded-full overflow-hidden border-2 border-gray-200 hover:border-indigo-500 transition">
-                        <img src="${AppData.currentUser.photo}" alt="Profile" class="w-full h-full object-cover">
+                        <img src="${userPhoto}" alt="Profile" class="w-full h-full object-cover">
                     </button>
                 </div>
             </div>
@@ -39,6 +42,19 @@ const Navbar = {
         // Notifications button click
         document.getElementById('btn-notifications')?.addEventListener('click', () => {
             this.showNotifications();
+        });
+
+        // Logout button click
+        document.getElementById('btn-logout')?.addEventListener('click', async () => {
+            if (confirm('Are you sure you want to log out?')) {
+                await Database.logout();
+                AppData.currentUser = null;
+                // Clear IndexedDB currentUser
+                const tx = Database.db.transaction(['currentUser'], 'readwrite');
+                tx.objectStore('currentUser').clear();
+                // Show auth page
+                Auth.show();
+            }
         });
     },
 

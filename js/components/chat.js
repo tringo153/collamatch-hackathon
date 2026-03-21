@@ -1,4 +1,4 @@
-// Chat Component - Updated with 24-hour structured chat and guided prompts
+// Chat Component - Updated with 24-hour structured chat and YES/NO decision
 
 const Chat = {
     currentChat: null,
@@ -6,49 +6,51 @@ const Chat = {
     currentPromptIndex: 0,
 
     init() {
-        this.loadMockMessages();
+        // Load chats from AppData
+        this.loadChats();
     },
 
-    loadMockMessages() {
-        this.messages = [
-            {
-                id: 'chat-1',
-                participant: {
-                    id: 'user-2',
-                    name: 'Sarah Johnson',
-                    photo: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop&crop=face'
-                },
-                messages: [
-                    { id: 'm1', from: 'system', text: '🎉 24-hour chat started! Use the guided prompts below to break the ice.', time: 'Just now', isSystem: true },
-                    { id: 'm2', from: 'system', text: '📝 Prompt 1: What brings you to this project?', time: 'Just now', isPrompt: true, promptId: 1 }
-                ],
-                unread: 2,
-                project: 'AI Task Manager',
-                expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-                status: 'active' // 'active', 'expired', 'continued'
-            },
-            {
-                id: 'chat-2',
-                participant: {
-                    id: 'user-3',
-                    name: 'Michael Park',
-                    photo: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop&crop=face'
-                },
-                messages: [
-                    { id: 'm1', from: 'system', text: '🎉 24-hour chat started! Use the guided prompts below to break the ice.', time: 'Just now', isSystem: true },
-                    { id: 'm2', from: 'them', text: 'Hey! Thanks for connecting. I saw you\'re interested in the sustainable e-commerce project.', time: '5h ago' },
-                    { id: 'm3', from: 'me', text: 'Yes! I love the mission. I have experience in marketing.', time: '4h ago' }
-                ],
-                unread: 0,
-                project: 'Sustainable E-commerce',
-                expiresAt: new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString(),
-                status: 'active'
-            }
-        ];
+    loadChats() {
+        // Use AppData.chats if available, otherwise empty array
+        this.messages = AppData.chats || [];
     },
 
     showChatList() {
+        // Reload chats from AppData
+        this.loadChats();
+        
         const main = document.querySelector('main');
+        
+        if (this.messages.length === 0) {
+            main.innerHTML = `
+                <section class="fixed inset-0 top-16 bottom-20 overflow-y-auto px-4 py-6">
+                    <div class="flex items-center justify-between mb-6 max-w-md mx-auto">
+                        <h2 class="text-2xl font-bold text-gray-800">Chats</h2>
+                    </div>
+                    
+                    <!-- 24-hour notice -->
+                    <div class="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4 max-w-md mx-auto">
+                        <div class="flex items-start gap-2">
+                            <i class="ph ph-clock text-amber-600 mt-0.5"></i>
+                            <div>
+                                <p class="text-sm text-amber-800 font-medium">24-Hour Decision Window</p>
+                                <p class="text-xs text-amber-600">Chats auto-delete after 24 hours unless both agree to continue</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center py-12 max-w-md mx-auto">
+                        <i class="ph ph-chat-circle text-5xl text-gray-300 mb-4"></i>
+                        <h3 class="text-lg font-semibold text-gray-600 mb-2">No Matches Yet</h3>
+                        <p class="text-gray-400 mb-4">Start swiping to find your perfect matches!</p>
+                        <button onclick="Browse.init()" class="px-6 py-2 bg-indigo-600 text-white rounded-full hover:bg-indigo-700 transition">
+                            Discover Now
+                        </button>
+                    </div>
+                </section>
+            `;
+            return;
+        }
         
         let html = `
             <section class="fixed inset-0 top-16 bottom-20 overflow-y-auto px-4 py-6">
@@ -71,10 +73,14 @@ const Chat = {
         `;
 
         this.messages.forEach(chat => {
-            const lastMessage = chat.messages[chat.messages.length - 1];
+            const lastMessage = chat.messages && chat.messages.length > 0 ? chat.messages[chat.messages.length - 1] : null;
             const isUnread = chat.unread > 0;
             const hoursLeft = this.getHoursLeft(chat.expiresAt);
             const isExpiring = hoursLeft < 6;
+            const lastMessageText = lastMessage ? lastMessage.text : 'No messages yet';
+            
+            // Skip rejected chats
+            if (chat.status === 'rejected') return;
             
             html += `
                 <div onclick="Chat.openChat('${chat.id}')" class="bg-white rounded-xl p-4 shadow-sm flex items-center gap-4 cursor-pointer hover:shadow-md transition ${isUnread ? 'border-l-4 border-indigo-500' : ''} ${isExpiring ? 'border-l-4 border-amber-500' : ''}">
@@ -90,8 +96,8 @@ const Chat = {
                             <h3 class="font-semibold text-gray-800 ${isUnread ? '' : 'font-normal'}">${chat.participant.name}</h3>
                             <span class="text-xs ${isExpiring ? 'text-amber-600 font-medium' : 'text-gray-400'}">${hoursLeft}h left</span>
                         </div>
-                        <p class="text-xs text-indigo-600 font-medium">${chat.project}</p>
-                        <p class="text-sm text-gray-600 truncate">${lastMessage.text}</p>
+                        <p class="text-xs text-indigo-600 font-medium">${chat.project ? chat.project.title : 'Match'}</p>
+                        <p class="text-sm text-gray-600 truncate">${lastMessageText}</p>
                     </div>
                     ${isUnread ? `<span class="w-5 h-5 bg-indigo-600 text-white text-xs rounded-full flex items-center justify-center">${chat.unread}</span>` : ''}
                 </div>
@@ -147,11 +153,16 @@ const Chat = {
                     </div>
                 `;
             }
+            // Check if message is from current user
+            const currentUserId = AppData.currentUser?.id;
+            const currentUserIdAlt = AppData.currentUser?.originalId || (currentUserId === 'current' ? 'user-1' : currentUserId);
+            const isMe = msg.senderId === currentUserId || msg.senderId === currentUserIdAlt || msg.from === 'me';
+            
             return `
-                <div class="flex ${msg.from === 'me' ? 'justify-end' : 'justify-start'}">
-                    <div class="max-w-[75%] ${msg.from === 'me' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-800'} rounded-2xl px-4 py-2 ${msg.from === 'me' ? 'rounded-br-sm' : 'rounded-bl-sm'}">
+                <div class="flex ${isMe ? 'justify-end' : 'justify-start'}">
+                    <div class="max-w-[75%] ${isMe ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-800'} rounded-2xl px-4 py-2 ${isMe ? 'rounded-br-sm' : 'rounded-bl-sm'}">
                         <p class="text-sm">${msg.text}</p>
-                        <p class="text-xs ${msg.from === 'me' ? 'text-indigo-200' : 'text-gray-400'} mt-1">${msg.time}</p>
+                        <p class="text-xs ${isMe ? 'text-indigo-200' : 'text-gray-400'} mt-1">${msg.time}</p>
                     </div>
                 </div>
             `;
@@ -159,6 +170,33 @@ const Chat = {
 
         const hoursLeft = this.getHoursLeft(chat.expiresAt);
         const isExpiring = hoursLeft < 6;
+        
+        // Decision buttons (only show if chat is still active)
+        const decisionButtons = chat.status === 'active' ? `
+            <div class="bg-white border-t p-3">
+                <p class="text-xs text-gray-500 mb-2 text-center">Your decision:</p>
+                <div class="flex gap-2">
+                    <button onclick="Chat.rejectMatch('${chat.id}')" class="flex-1 py-3 border-2 border-gray-300 text-gray-600 font-semibold rounded-xl hover:bg-gray-50 transition flex items-center justify-center gap-2">
+                        <i class="ph ph-x"></i> No Thanks
+                    </button>
+                    <button onclick="Chat.acceptMatch('${chat.id}')" class="flex-1 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white font-semibold rounded-xl hover:shadow-lg transition flex items-center justify-center gap-2">
+                        <i class="ph ph-heart"></i> Yes! Continue
+                    </button>
+                </div>
+            </div>
+        ` : '';
+        
+        // Contact exchange display (if continued)
+        const contactDisplay = chat.status === 'continued' && chat.contactExchanged ? `
+            <div class="bg-green-50 border-t p-3">
+                <p class="text-sm font-medium text-green-800 mb-2"><i class="ph ph-check-circle"></i> Contact Info Shared!</p>
+                <div class="text-xs text-green-700">
+                    <p>Email: ${chat.contactExchanged.email || 'Not provided'}</p>
+                    ${chat.contactExchanged.linkedin ? `<p>LinkedIn: ${chat.contactExchanged.linkedin}</p>` : ''}
+                    ${chat.contactExchanged.twitter ? `<p>Twitter: ${chat.contactExchanged.twitter}</p>` : ''}
+                </div>
+            </div>
+        ` : '';
 
         html = `
             <section class="fixed inset-0 top-16 bottom-20 flex flex-col bg-gray-50">
@@ -179,7 +217,7 @@ const Chat = {
                     </div>
                     <div class="flex-1">
                         <h3 class="font-semibold text-gray-800">${chat.participant.name}</h3>
-                        <p class="text-xs text-indigo-600">${chat.project}</p>
+                        <p class="text-xs text-indigo-600">${chat.project ? chat.project.title : 'Match'}</p>
                     </div>
                 </div>
                 
@@ -188,7 +226,8 @@ const Chat = {
                     ${messagesHTML}
                 </div>
                 
-                <!-- Guided Prompts -->
+                <!-- Guided Prompts (hide if decision already made) -->
+                ${chat.status !== 'continued' ? `
                 <div class="bg-white border-t p-3">
                     <p class="text-xs text-gray-500 mb-2">Quick responses:</p>
                     <div class="flex gap-2 overflow-x-auto pb-2">
@@ -206,8 +245,10 @@ const Chat = {
                         </button>
                     </div>
                 </div>
+                ` : ''}
                 
-                <!-- Input -->
+                <!-- Input (hide if decision made) -->
+                ${chat.status !== 'continued' ? `
                 <div class="bg-white border-t p-3">
                     <div class="flex items-center gap-2">
                         <button class="text-gray-400 hover:text-gray-600 p-2">
@@ -221,6 +262,13 @@ const Chat = {
                         </button>
                     </div>
                 </div>
+                ` : ''}
+                
+                <!-- Contact Exchange Display -->
+                ${contactDisplay}
+                
+                <!-- Decision Buttons -->
+                ${decisionButtons}
             </section>
         `;
         
@@ -269,15 +317,19 @@ const Chat = {
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
     },
 
-    sendMessage() {
+    async sendMessage() {
         const input = document.getElementById('message-input');
         const text = input.value.trim();
         
         if (!text || !this.currentChat) return;
         
+        // Get current user ID - use originalId if available
+        const currentUserId = AppData.currentUser?.id;
+        const currentUserIdAlt = AppData.currentUser?.originalId || (currentUserId === 'current' ? 'user-1' : currentUserId);
+        
         const newMessage = {
             id: 'm' + Date.now(),
-            from: 'me',
+            senderId: currentUserIdAlt || currentUserId,
             text: text,
             time: 'Just now'
         };
@@ -300,46 +352,95 @@ const Chat = {
         
         input.value = '';
         
-        // Simulate reply after 2 seconds
-        setTimeout(() => {
-            this.simulateReply();
-        }, 2000);
+        // Save chat to AppData and Database
+        const chatIndex = this.messages.findIndex(c => c.id === this.currentChat.id);
+        if (chatIndex >= 0) {
+            this.messages[chatIndex] = this.currentChat;
+        }
+        
+        // Save to database for persistence
+        if (this.currentChat && this.currentChat.id) {
+            await Database.add('chats', this.currentChat);
+        }
     },
-
-    simulateReply() {
-        if (!this.currentChat) return;
+    
+    // Accept match - exchange contacts and continue
+    async acceptMatch(chatId) {
+        const chat = this.messages.find(c => c.id === chatId);
+        if (!chat) return;
         
-        const replies = [
-            'That\'s a great point! I\'ve been thinking the same thing.',
-            'Interesting! Tell me more about your approach.',
-            'I agree. Let\'s figure out the best way forward.',
-            'Thanks for sharing! This helps me understand better.',
-            'Great question. Here\'s what I think...'
-        ];
+        // Update chat status
+        chat.status = 'continued';
         
-        const randomReply = replies[Math.floor(Math.random() * replies.length)];
+        // Get current user's contact info
+        const userContact = AppData.currentUser.contact || { email: '', linkedin: '', twitter: '' };
         
-        const newMessage = {
-            id: 'm' + Date.now(),
-            from: 'them',
-            text: randomReply,
-            time: 'Just now'
+        // Simulate exchange (in real app, this would be mutual)
+        chat.contactExchanged = {
+            name: chat.participant.name,
+            email: chat.participant.name.toLowerCase().replace(' ', '.') + '@example.com',
+            linkedin: 'linkedin.com/in/' + chat.participant.name.toLowerCase().replace(' ', '-'),
+            twitter: '@' + chat.participant.name.toLowerCase().replace(' ', '')
         };
         
-        this.currentChat.messages.push(newMessage);
+        // Add system message
+        chat.messages.push({
+            id: 'm' + Date.now(),
+            from: 'system',
+            text: '🎉 Great decision! You decided to continue together. Contact info has been exchanged!',
+            time: 'Just now',
+            isSystem: true
+        });
         
-        const messagesContainer = document.getElementById('chat-messages');
-        const messageHTML = `
-            <div class="flex justify-start">
-                <div class="max-w-[75%] bg-gray-100 text-gray-800 rounded-2xl px-4 py-2 rounded-bl-sm">
-                    <p class="text-sm">${randomReply}</p>
-                    <p class="text-xs text-gray-400 mt-1">Just now</p>
-                </div>
-            </div>
-        `;
+        // Add our contact info to the chat
+        chat.messages.push({
+            id: 'm' + Date.now(),
+            from: 'system',
+            text: `📧 Your contact info shared: ${userContact.email || 'No email'}`,
+            time: 'Just now',
+            isSystem: true
+        });
         
-        messagesContainer.insertAdjacentHTML('beforeend', messageHTML);
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        // Save to database
+        await Database.saveChat(chat);
+        
+        // Re-render the chat
+        this.openChat(chatId);
+        
+        // Show success message
+        alert('🎉 You decided to continue! Contact info has been exchanged. You can now connect outside the app!');
+    },
+    
+    // Reject match - delete chat
+    async rejectMatch(chatId) {
+        const chat = this.messages.find(c => c.id === chatId);
+        if (!chat) return;
+        
+        // Confirm deletion
+        if (!confirm('Are you sure? The chat will be deleted and you won\'t be able to reconnect through this app.')) {
+            return;
+        }
+        
+        // Update chat status
+        chat.status = 'rejected';
+        
+        // Add system message before deleting
+        chat.messages.push({
+            id: 'm' + Date.now(),
+            from: 'system',
+            text: '👋 This chat has ended. Best of luck with your search!',
+            time: 'Just now',
+            isSystem: true
+        });
+        
+        // Remove from AppData.chats (delete chat)
+        AppData.chats = AppData.chats.filter(c => c.id !== chatId);
+        
+        // Delete from database
+        await Database.deleteChat(chatId);
+        
+        // Show chat list
+        this.showChatList();
     }
 };
 

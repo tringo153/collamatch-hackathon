@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SynCo - Find Your Perfect Project Partner</title>
+    <title>CollaMatch - Find Your Perfect Project Partner</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Google Fonts -->
@@ -29,7 +29,7 @@
     <div id="match-popup" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 hidden"></div>
 
     <!-- Bottom Navigation -->
-    <nav class="fixed bottom-0 w-full bg-white border-t border-gray-200 px-6 py-3">
+    <nav id="bottom-nav" class="fixed bottom-0 w-full bg-white border-t border-gray-200 px-6 py-3">
         <div class="max-w-md mx-auto flex justify-around items-center">
             <button class="nav-btn p-2 text-indigo-600" data-page="discover">
                 <i class="ph ph-compass text-2xl"></i>
@@ -56,6 +56,7 @@
 
     <!-- Scripts -->
     <script src="js/data.js"></script>
+    <script src="js/database.js"></script>
     <script src="js/components/navbar.js"></script>
     <script src="js/components/card.js"></script>
     <script src="js/components/modal.js"></script>

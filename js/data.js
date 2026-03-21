@@ -21,6 +21,15 @@ const AppData = {
         location: 'San Francisco, CA',
         distance: '0 mi',
         lookingFor: ['Projects', 'Collaborators'],
+        // Likes tracking for matching
+        likesSent: [], // Array of {targetId, targetType, timestamp}
+        likesReceived: [], // Array of {fromId, fromType, timestamp}
+        // Contact info to share with matches
+        contact: {
+            email: 'alex@example.com',
+            linkedin: '',
+            twitter: ''
+        },
         // Private document - only visible to owner or through request
         privateDocument: {
             title: 'Personal Portfolio',
@@ -85,7 +94,9 @@ const AppData = {
             // Projects owned by this user
             ownedProjects: ['proj-1'],
             // Projects user has pressed interested on
-            interestedProjects: []
+            interestedProjects: [],
+            // Track who they liked (for matching)
+            likesSent: []
         },
         {
             id: 'user-3',
@@ -112,7 +123,8 @@ const AppData = {
                 isPublic: false
             },
             ownedProjects: ['proj-2'],
-            interestedProjects: ['proj-4']
+            interestedProjects: ['proj-4'],
+            likesSent: []
         },
         {
             id: 'user-4',
@@ -139,7 +151,8 @@ const AppData = {
                 isPublic: false
             },
             ownedProjects: ['proj-3'],
-            interestedProjects: ['proj-5']
+            interestedProjects: ['proj-5'],
+            likesSent: []
         },
         {
             id: 'user-5',
@@ -166,7 +179,8 @@ const AppData = {
                 isPublic: false
             },
             ownedProjects: [],
-            interestedProjects: ['proj-1', 'proj-2']
+            interestedProjects: ['proj-1', 'proj-2'],
+            likesSent: []
         },
         {
             id: 'user-6',
@@ -193,7 +207,8 @@ const AppData = {
                 isPublic: false
             },
             ownedProjects: [],
-            interestedProjects: ['proj-3', 'proj-4']
+            interestedProjects: ['proj-3', 'proj-4'],
+            likesSent: []
         }
     ],
 
@@ -349,8 +364,11 @@ const AppData = {
 
     // Matches storage
     matches: [],
+    
+    // Active 24h chats (when both like each other)
+    chats: [],
 
-    // Swiped items storage
+    // Swiped/liked items storage
     swiped: {
         users: [],
         projects: []

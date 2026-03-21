@@ -295,11 +295,11 @@ const Modal = {
                         
                         <!-- Action Buttons -->
                         <div class="flex gap-3 pt-4 border-t">
-                            <button onclick="Modal.close()" class="flex-1 py-3 border-2 border-gray-300 text-gray-600 font-semibold rounded-xl hover:bg-gray-50 transition">
-                                <i class="ph ph-x"></i> Close
+                            <button onclick="Modal.close(); setTimeout(() => Browse.handleAction('${user.id}', 'user', 'pass'), 200);" class="flex-1 py-3 border-2 border-gray-300 text-gray-600 font-semibold rounded-xl hover:bg-gray-50 transition">
+                                <i class="ph ph-x"></i> Pass
                             </button>
-                            <button onclick="Modal.handleInterest('user', '${user.id}')" class="flex-1 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white font-semibold rounded-xl hover:shadow-lg transition">
-                                <i class="ph ph-heart"></i> Interested
+                            <button onclick="Modal.close(); setTimeout(() => Browse.handleAction('${user.id}', 'user', 'like'), 200);" class="flex-1 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white font-semibold rounded-xl hover:shadow-lg transition">
+                                <i class="ph ph-heart"></i> Like
                             </button>
                         </div>
                     </div>
@@ -443,12 +443,18 @@ const Modal = {
                         
                         <!-- Action Buttons -->
                         <div class="flex gap-3 pt-4 border-t">
-                            <button onclick="Modal.close()" class="flex-1 py-3 border-2 border-gray-300 text-gray-600 font-semibold rounded-xl hover:bg-gray-50 transition">
-                                <i class="ph ph-x"></i> Close
-                            </button>
-                            <button onclick="Modal.handleInterest('project', '${project.id}')" class="flex-1 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white font-semibold rounded-xl hover:shadow-lg transition">
-                                <i class="ph ph-heart"></i> Interested
-                            </button>
+                            ${isOwnProject ? `
+                                <button onclick="Modal.close()" class="flex-1 py-3 border-2 border-gray-300 text-gray-600 font-semibold rounded-xl hover:bg-gray-50 transition">
+                                    <i class="ph ph-x"></i> Close
+                                </button>
+                            ` : `
+                                <button onclick="Modal.close(); setTimeout(() => Browse.handleAction('${project.id}', 'project', 'pass'), 200);" class="flex-1 py-3 border-2 border-gray-300 text-gray-600 font-semibold rounded-xl hover:bg-gray-50 transition">
+                                    <i class="ph ph-x"></i> Pass
+                                </button>
+                                <button onclick="Modal.close(); setTimeout(() => Browse.handleAction('${project.id}', 'project', 'like'), 200);" class="flex-1 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white font-semibold rounded-xl hover:shadow-lg transition">
+                                    <i class="ph ph-heart"></i> Like
+                                </button>
+                            `}
                         </div>
                     </div>
                 </div>
@@ -970,36 +976,47 @@ const Modal = {
         document.querySelector('.availability-btn[data-value="10-15 hrs/week"]')?.classList.add('border-green-500', 'bg-green-50', 'text-green-700');
         
         // Form submit
-        form.addEventListener('submit', (e) => {
+        form.addEventListener('submit', async (e) => {
             e.preventDefault();
             
             const newProject = {
                 id: 'project_' + Date.now(),
+                type: 'project',
                 title: document.getElementById('project-title').value,
                 description: document.getElementById('project-description').value,
                 teamNeeds: teamNeeds,
                 workStyle: workStyles,
+                skills: [], // Empty skills for new projects
+                goals: [], // Empty goals for new projects
                 availability: availability,
                 location: document.getElementById('project-location').value || 'Remote',
-                distance: '0 miles',
+                distance: '0 mi',
                 distanceValue: 0,
+                postedDate: 'Just now',
                 owner: {
                     id: AppData.currentUser.id,
                     name: AppData.currentUser.name,
                     photo: AppData.currentUser.photo
                 },
                 createdAt: new Date().toISOString(),
-                lookingFor: ['Collaborators']
+                lookingFor: ['Collaborators'],
+                privateDocument: null
             };
             
             // Add to AppData
             AppData.projects.push(newProject);
+            
+            // Save to database
+            await Database.saveProject(newProject);
             
             // Add to user's owned projects
             if (!AppData.currentUser.ownedProjects) {
                 AppData.currentUser.ownedProjects = [];
             }
             AppData.currentUser.ownedProjects.push(newProject.id);
+            
+            // Save current user to database
+            await Database.saveCurrentUser(AppData.currentUser);
             
             // Close modal and refresh profile
             Modal.close();

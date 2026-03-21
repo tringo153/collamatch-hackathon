@@ -1,20 +1,29 @@
 // Main Application Entry Point
 
 const App = {
-    init() {
-        console.log('SynCo - Initializing...');
+    async init() {
+        console.log('CollaMatch - Initializing...');
+        
+        // Wait for database to be ready
+        await new Promise(resolve => {
+            const checkDB = setInterval(() => {
+                if (Database.db) {
+                    clearInterval(checkDB);
+                    resolve();
+                }
+            }, 100);
+        });
+        
+        // Load data from database
+        await Database.loadToAppData();
         
         // Initialize components
         Navbar.render();
+        Chat.init();
         
-        // Check if user has completed profile, otherwise show signup
-        if (!AppData.currentUser.name || AppData.currentUser.name === 'Alex Chen') {
-            // Show browse screen by default (it will work with default data)
-            Browse.init();
-        } else {
-            // User has profile, show browse
-            Browse.init();
-        }
+        // Show auth screen (login/signup tabs) first
+        // After login/signup is complete, it will navigate to browse
+        Auth.show();
         
         // Setup bottom navigation
         this.setupNavigation();
@@ -22,7 +31,7 @@ const App = {
         // Add animation to buttons
         this.setupButtonAnimations();
         
-        console.log('SynCo - Ready!');
+        console.log('CollaMatch - Ready!');
     },
 
     setupNavigation() {
@@ -75,44 +84,181 @@ const App = {
     showMatchesPage() {
         const main = document.querySelector('main');
         
-        if (AppData.matches.length === 0) {
-            main.innerHTML = `
-                <section class="fixed inset-0 top-16 bottom-20 overflow-y-auto px-4 py-8">
-                    <h2 class="text-2xl font-bold text-gray-800 mb-6 max-w-md mx-auto">Your Matches</h2>
-                    <div class="empty-state max-w-md mx-auto">
-                        <i class="ph ph-heart"></i>
-                        <h3>No Matches Yet</h3>
-                        <p>Start swiping to find your perfect project partners!</p>
-                        <button onclick="location.reload()" class="mt-4 px-6 py-2 bg-indigo-600 text-white rounded-full hover:bg-indigo-700 transition">
-                            Discover Now
-                        </button>
-                    </div>
-                </section>
-            `;
-            return;
-        }
+        // Get current user ID
+        const currentUserId = AppData.currentUser?.id;
+        const currentUserIdAlt = AppData.currentUser?.originalId || (currentUserId === 'current' ? 'user-1' : currentUserId);
         
+        // Get users who liked current user
+        // Check both: 1) collaborators' likesSent (who liked current user), 2) current user's likesReceived
+        const usersWhoLikedYou = [];
+        const currentUserLikesSent = AppData.currentUser?.likesSent || [];
+        const currentUserLikesReceived = AppData.currentUser?.likesReceived || [];
+        
+        AppData.collaborators.forEach(collab => {
+            // Skip if this is the current user
+            if (collab.id === currentUserId || collab.id === currentUserIdAlt) {
+                return;
+            }
+            
+            let liked = false;
+            
+            // Check 1: Does this collaborator's likesSent include current user?
+            if (collab.likesSent && Array.isArray(collab.likesSent)) {
+                liked = collab.likesSent.some(like => 
+                    like.targetId === currentUserId || 
+                    like.targetId === currentUserIdAlt ||
+                    like.targetId === 'current'
+                );
+            }
+            
+            // Check 2: Does current user's likesReceived include this collaborator?
+            if (!liked && currentUserLikesReceived.length > 0) {
+                liked = currentUserLikesReceived.some(like => 
+                    like.fromId === collab.id
+                );
+            }
+            
+            // Skip if already matched (current user already liked them back)
+            if (liked) {
+                const alreadyMatched = currentUserLikesSent.some(like => 
+                    like.targetId === collab.id || 
+                    like.targetId === collab.originalId
+                );
+                
+                if (!alreadyMatched) {
+                    usersWhoLikedYou.push({
+                        id: collab.id,
+                        name: collab.name,
+                        photo: collab.photo,
+                        bio: collab.bio,
+                        skills: collab.skills,
+                        location: collab.location
+                    });
+                }
+            }
+        });
+        
+        // Get current user's projects
+        const myProjects = AppData.projects.filter(p => 
+            p.owner && (p.owner.id === currentUserId || p.owner.id === currentUserIdAlt)
+        );
+        
+        // Get users interested in my projects (who haven't been matched yet)
+        const interestedInMyProjects = [];
+        myProjects.forEach(project => {
+            AppData.collaborators.forEach(collab => {
+                if (collab.interestedProjects && collab.interestedProjects.includes(project.id)) {
+                    // Check if already matched
+                    const currentUserLikes = AppData.currentUser?.likesSent || [];
+                    const alreadyMatched = currentUserLikes.some(like => 
+                        like.targetId === collab.id
+                    );
+                    
+                    if (!alreadyMatched) {
+                        interestedInMyProjects.push({
+                            user: {
+                                id: collab.id,
+                                name: collab.name,
+                                photo: collab.photo,
+                                bio: collab.bio
+                            },
+                            project: {
+                                id: project.id,
+                                title: project.title
+                            }
+                        });
+                    }
+                }
+            });
+        });
+        
+        // Render page with tabs
         let html = `
             <section class="fixed inset-0 top-16 bottom-20 overflow-y-auto px-4 py-6">
-                <h2 class="text-2xl font-bold text-gray-800 mb-6 max-w-md mx-auto">Your Matches (${AppData.matches.length})</h2>
-                <div class="space-y-4 max-w-md mx-auto">
-        `;
-        
-        AppData.matches.forEach(match => {
-            html += `
-                <div class="bg-white rounded-xl p-4 shadow-sm flex items-center gap-4 cursor-pointer hover:shadow-md transition">
-                    <img src="${match.item.owner.avatar}" alt="${match.item.owner.name}" class="w-16 h-16 rounded-full object-cover">
-                    <div class="flex-1">
-                        <h3 class="font-semibold text-gray-800">${match.item.owner.name}</h3>
-                        <p class="text-sm text-gray-600">${match.item.title}</p>
-                        <p class="text-xs text-gray-400">Matched ${this.formatDate(match.matchedAt)}</p>
-                    </div>
-                    <button class="w-10 h-10 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center hover:bg-indigo-200 transition">
-                        <i class="ph ph-chat-circle text-xl"></i>
+                <h2 class="text-2xl font-bold text-gray-800 mb-4 max-w-md mx-auto">Your Matches</h2>
+                
+                <!-- Tabs -->
+                <div class="flex items-center justify-center gap-2 mb-4 p-1 bg-gray-100 rounded-xl max-w-md mx-auto">
+                    <button class="match-tab flex-1 px-4 py-2 rounded-lg text-sm font-medium transition bg-white text-indigo-600 shadow-sm" data-tab="people" onclick="App.switchMatchTab('people')">
+                        <i class="ph ph-users mr-1"></i> People Who Liked You (${usersWhoLikedYou.length})
+                    </button>
+                    <button class="match-tab flex-1 px-4 py-2 rounded-lg text-sm font-medium transition text-gray-500" data-tab="projects" onclick="App.switchMatchTab('projects')">
+                        <i class="ph ph-rocket-launch mr-1"></i> Your Projects (${interestedInMyProjects.length})
                     </button>
                 </div>
+                
+                <!-- People Who Liked You -->
+                <div id="match-people" class="match-content space-y-4 max-w-md mx-auto">
+        `;
+        
+        if (usersWhoLikedYou.length === 0) {
+            html += `
+                <div class="text-center py-12">
+                    <i class="ph ph-heart text-5xl text-gray-300 mb-4"></i>
+                    <h3 class="text-lg font-semibold text-gray-600 mb-2">No Likes Yet</h3>
+                    <p class="text-gray-400">Start swiping to get noticed!</p>
+                </div>
             `;
-        });
+        } else {
+            usersWhoLikedYou.forEach(user => {
+                html += `
+                    <div class="bg-white rounded-xl p-4 shadow-sm">
+                        <div class="flex items-center gap-4">
+                            <img src="${user.photo}" alt="${user.name}" class="w-16 h-16 rounded-full object-cover">
+                            <div class="flex-1">
+                                <h3 class="font-semibold text-gray-800">${user.name}</h3>
+                                <p class="text-sm text-gray-600">${user.location || ''}</p>
+                                <p class="text-xs text-indigo-600">Liked your profile</p>
+                            </div>
+                        </div>
+                        <div class="mt-3 flex gap-2">
+                            <button onclick="App.likeBack('${user.id}', 'user')" class="flex-1 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition">
+                                <i class="ph ph-heart mr-1"></i> Like Back
+                            </button>
+                            <button onclick="Modal.showUserDetailModal(AppData.collaborators.find(u => u.id === '${user.id}'))" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50 transition">
+                                <i class="ph ph-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+        
+        html += `
+                </div>
+                
+                <!-- Projects Interested -->
+                <div id="match-projects" class="match-content space-y-4 max-w-md mx-auto hidden">
+        `;
+        
+        if (interestedInMyProjects.length === 0) {
+            html += `
+                <div class="text-center py-12">
+                    <i class="ph ph-rocket-launch text-5xl text-gray-300 mb-4"></i>
+                    <h3 class="text-lg font-semibold text-gray-600 mb-2">No Interest Yet</h3>
+                    <p class="text-gray-400">Create projects to attract collaborators!</p>
+                </div>
+            `;
+        } else {
+            interestedInMyProjects.forEach(item => {
+                html += `
+                    <div class="bg-white rounded-xl p-4 shadow-sm">
+                        <div class="flex items-center gap-4">
+                            <img src="${item.user.photo}" alt="${item.user.name}" class="w-12 h-12 rounded-full object-cover">
+                            <div class="flex-1">
+                                <h3 class="font-semibold text-gray-800">${item.user.name}</h3>
+                                <p class="text-sm text-gray-600">Interested in: ${item.project.title}</p>
+                            </div>
+                        </div>
+                        <div class="mt-3 flex gap-2">
+                            <button onclick="App.likeBack('${item.user.id}', 'user', '${item.project.id}')" class="flex-1 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition">
+                                <i class="ph ph-heart mr-1"></i> Like Back
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+        }
         
         html += `
                 </div>
@@ -120,6 +266,103 @@ const App = {
         `;
         
         main.innerHTML = html;
+    },
+    
+    // Handle like back from matches page
+    async likeBack(targetId, type, projectId = null) {
+        const currentUserId = AppData.currentUser?.id;
+        const currentUserIdAlt = AppData.currentUser?.originalId || 'user-1';
+        
+        // Get project if provided
+        const project = projectId ? AppData.projects.find(p => p.id === projectId) : null;
+        
+        // Add like to current user
+        if (!AppData.currentUser.likesSent) {
+            AppData.currentUser.likesSent = [];
+        }
+        
+        AppData.currentUser.likesSent.push({
+            targetId: targetId,
+            targetType: type,
+            projectId: projectId,
+            timestamp: new Date().toISOString()
+        });
+        
+        // Save to database
+        await Database.saveCurrentUser(AppData.currentUser);
+        
+        // Check if target already liked us (create match)
+        const targetUser = AppData.collaborators.find(u => u.id === targetId);
+        let isMatch = false;
+        
+        if (targetUser && targetUser.likesSent) {
+            const likedUsBack = targetUser.likesSent.some(like => 
+                like.targetId === currentUserId || 
+                like.targetId === currentUserIdAlt ||
+                like.targetId === 'current'
+            );
+            
+            if (likedUsBack) {
+                isMatch = true;
+                
+                // Create match
+                const matchId = `match-${Date.now()}`;
+                const match = {
+                    id: matchId,
+                    users: [currentUserIdAlt, targetId],
+                    projectId: projectId,
+                    createdAt: new Date().toISOString(),
+                    lastActivity: new Date().toISOString()
+                };
+                
+                await Database.add('matches', match);
+                
+                // Create initial chat
+                const chat = {
+                    id: matchId,
+                    matchId: matchId,
+                    participants: [currentUserIdAlt, targetId],
+                    messages: [{
+                        id: `msg-${Date.now()}`,
+                        senderId: 'system',
+                        content: `You matched with ${targetUser.name}! Start a conversation within 24 hours.`,
+                        timestamp: new Date().toISOString()
+                    }],
+                    createdAt: new Date().toISOString(),
+                    expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+                };
+                
+                await Database.add('chats', chat);
+                
+                // Navigate to chat
+                App.showChatsPage();
+                return;
+            }
+        }
+        
+        if (!isMatch) {
+            alert('Like sent! If they like you back, it will be a match.');
+            // Refresh the matches page
+            App.showMatchesPage();
+        }
+    },
+    
+    switchMatchTab(tab) {
+        document.querySelectorAll('.match-tab').forEach(btn => {
+            if (btn.dataset.tab === tab) {
+                btn.classList.add('bg-white', 'text-indigo-600', 'shadow-sm');
+                btn.classList.remove('text-gray-500');
+            } else {
+                btn.classList.remove('bg-white', 'text-indigo-600', 'shadow-sm');
+                btn.classList.add('text-gray-500');
+            }
+        });
+        
+        document.querySelectorAll('.match-content').forEach(div => {
+            div.classList.add('hidden');
+        });
+        
+        document.getElementById(`match-${tab}`).classList.remove('hidden');
     },
 
     showMessagesPage() {
