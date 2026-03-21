@@ -134,7 +134,353 @@ const Modal = {
         container.innerHTML = html;
     },
 
+    // Show detailed user modal with private document and projects
+    showUserDetailModal(user) {
+        // Get user's owned projects
+        const userProjects = AppData.projects.filter(p => user.ownedProjects && user.ownedProjects.includes(p.id));
+        const interestedCount = user.interestedProjects ? user.interestedProjects.length : 0;
+        
+        // Check if current user owns this profile (can see private doc)
+        const isOwnProfile = user.id === AppData.currentUser.id;
+        
+        // Skills HTML
+        const skillsHTML = user.skills.map(skill => `
+            <div class="flex items-center gap-2 mb-1">
+                <span class="text-xs text-gray-600 w-20 truncate">${skill.name}</span>
+                <div class="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+                    <div class="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full" style="width: ${skill.level}%"></div>
+                </div>
+                <span class="text-xs text-gray-400 w-8">${skill.level}%</span>
+            </div>
+        `).join('');
+
+        // Goals HTML
+        const goalsHTML = user.goals.map(goal => 
+            `<span class="px-3 py-1 bg-indigo-50 text-indigo-700 rounded-full text-sm">${goal}</span>`
+        ).join('');
+
+        // Work style HTML
+        const workStyleHTML = user.workStyle.map(style => 
+            `<span class="px-2 py-1 bg-green-50 text-green-700 rounded-full text-xs font-medium">${style}</span>`
+        ).join('');
+
+        // Private document section
+        const privateDocHTML = user.privateDocument ? `
+            <div class="mb-5">
+                <div class="flex items-center justify-between mb-2">
+                    <h4 class="text-sm font-semibold text-gray-500">
+                        <i class="ph ph-lock mr-1"></i> Private Document
+                    </h4>
+                    ${isOwnProfile ? '<span class="text-xs text-green-600"><i class="ph ph-check-circle"></i> Your document</span>' : '<span class="text-xs text-gray-400">Available upon request</span>'}
+                </div>
+                <div class="bg-gray-50 rounded-xl p-4">
+                    <h5 class="font-semibold text-gray-800 mb-2">${user.privateDocument.title || 'Private Document'}</h5>
+                    ${isOwnProfile ? `
+                        <p class="text-sm text-gray-600">${user.privateDocument.content}</p>
+                    ` : `
+                        <div class="text-center py-2">
+                            <p class="text-sm text-gray-500 mb-3">This content is private. Request access to view.</p>
+                            <button class="px-4 py-2 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700 transition">
+                                <i class="ph ph-envelope mr-1"></i> Request Access
+                            </button>
+                        </div>
+                    `}
+                </div>
+            </div>
+        ` : '';
+
+        // Projects list HTML
+        const projectsListHTML = userProjects.length > 0 ? `
+            <div class="mb-5">
+                <h4 class="text-sm font-semibold text-gray-500 mb-3">
+                    <i class="ph ph-folder mr-1"></i> Projects (${userProjects.length})
+                </h4>
+                <div class="space-y-2">
+                    ${userProjects.map(project => `
+                        <div class="bg-green-50 rounded-lg p-3 cursor-pointer hover:bg-green-100 transition" onclick="Modal.showProjectDetailModal(AppData.projects.find(p => p.id === '${project.id}'))">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 bg-gradient-to-r from-green-500 to-emerald-500 rounded-lg flex items-center justify-center">
+                                    <i class="ph ph-rocket-launch text-white text-lg"></i>
+                                </div>
+                                <div class="flex-1">
+                                    <h5 class="font-medium text-gray-800">${project.title}</h5>
+                                    <p class="text-xs text-gray-500">${project.goals.slice(0, 2).join(', ')}</p>
+                                </div>
+                                <i class="ph ph-arrow-right text-gray-400"></i>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        ` : '';
+
+        const html = `
+            <div class="modal-overlay" onclick="event.target === this && Modal.close()">
+                <div class="modal-content w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
+                    <button onclick="Modal.close()" class="absolute top-4 right-4 w-10 h-10 bg-white rounded-full shadow-lg flex items-center justify-center text-gray-500 hover:text-gray-700 z-10">
+                        <i class="ph ph-x text-xl"></i>
+                    </button>
+                    
+                    <!-- Cover Photo -->
+                    <div class="relative">
+                        <div class="w-full h-32 bg-gradient-to-r from-indigo-600 to-purple-600"></div>
+                        <div class="absolute -bottom-12 left-6">
+                            <img src="${user.photo}" alt="${user.name}" class="w-24 h-24 rounded-full border-4 border-white shadow-md">
+                        </div>
+                    </div>
+                    
+                    <div class="p-5 pt-16">
+                        <!-- Name & Location -->
+                        <div class="mb-4">
+                            <h2 class="text-2xl font-bold text-gray-800">${user.name}</h2>
+                            <div class="flex items-center gap-2 text-gray-500 mt-1">
+                                <i class="ph ph-map-pin"></i>
+                                <span>${user.location}</span>
+                                <span class="text-xs bg-gray-100 px-2 py-0.5 rounded-full">${user.distance}</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Work Style & Availability -->
+                        <div class="flex flex-wrap gap-2 mb-4">
+                            ${workStyleHTML}
+                            <span class="px-2 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-medium">
+                                <i class="ph ph-clock mr-1"></i>${user.availability}
+                            </span>
+                        </div>
+                        
+                        <!-- Bio -->
+                        <p class="text-gray-600 mb-4">${user.bio}</p>
+                        
+                        <!-- Stats -->
+                        <div class="flex gap-4 mb-4">
+                            <div class="flex items-center gap-2 text-sm text-gray-500">
+                                <i class="ph ph-folder text-green-600"></i>
+                                <span>${userProjects.length} project${userProjects.length !== 1 ? 's' : ''}</span>
+                            </div>
+                            <div class="flex items-center gap-2 text-sm text-gray-500">
+                                <i class="ph ph-heart text-pink-600"></i>
+                                <span>${interestedCount} interested</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Goals -->
+                        <div class="mb-4">
+                            <h4 class="text-sm font-semibold text-gray-500 mb-2">Goals</h4>
+                            <div class="flex flex-wrap gap-2">
+                                ${goalsHTML}
+                            </div>
+                        </div>
+                        
+                        <!-- Looking For -->
+                        <div class="mb-4">
+                            <h4 class="text-sm font-semibold text-gray-500 mb-2">Looking For</h4>
+                            <div class="flex gap-2">
+                                ${user.lookingFor.map(item => 
+                                    `<span class="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-sm">${item}</span>`
+                                ).join('')}
+                            </div>
+                        </div>
+                        
+                        <!-- Skills -->
+                        <div class="mb-4">
+                            <h4 class="text-sm font-semibold text-gray-500 mb-2">Skills</h4>
+                            ${skillsHTML}
+                        </div>
+                        
+                        <!-- Private Document -->
+                        ${privateDocHTML}
+                        
+                        <!-- Projects List -->
+                        ${projectsListHTML}
+                        
+                        <!-- Action Buttons -->
+                        <div class="flex gap-3 pt-4 border-t">
+                            <button onclick="Modal.close()" class="flex-1 py-3 border-2 border-gray-300 text-gray-600 font-semibold rounded-xl hover:bg-gray-50 transition">
+                                <i class="ph ph-x"></i> Close
+                            </button>
+                            <button onclick="Modal.handleInterest('user', '${user.id}')" class="flex-1 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white font-semibold rounded-xl hover:shadow-lg transition">
+                                <i class="ph ph-heart"></i> Interested
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        const container = document.getElementById('modal-container');
+        container.innerHTML = html;
+    },
+
+    // Show detailed project modal with private document
+    showProjectDetailModal(project) {
+        // Check if current user owns this project
+        const isOwnProject = project.owner.id === AppData.currentUser.id;
+        
+        // Skills HTML
+        const skillsHTML = project.skills.map(skill => `
+            <div class="flex items-center gap-2 mb-1">
+                <span class="text-xs text-gray-600 w-20 truncate">${skill.name}</span>
+                <div class="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+                    <div class="h-full bg-gradient-to-r from-green-500 to-emerald-500 rounded-full" style="width: ${skill.level}%"></div>
+                </div>
+                <span class="text-xs text-gray-400 w-8">${skill.level}%</span>
+            </div>
+        `).join('');
+
+        // Goals HTML
+        const goalsHTML = project.goals.map(goal => 
+            `<span class="px-3 py-1 bg-green-50 text-green-700 rounded-full text-sm">${goal}</span>`
+        ).join('');
+
+        // Work style HTML
+        const workStyleHTML = project.workStyle.map(style => 
+            `<span class="px-2 py-1 bg-purple-50 text-purple-700 rounded-full text-xs font-medium">${style}</span>`
+        ).join('');
+
+        // Team needs HTML
+        const teamNeedsHTML = project.teamNeeds.map(need => 
+            `<span class="px-3 py-1 bg-orange-50 text-orange-700 rounded-full text-sm font-medium">${need}</span>`
+        ).join('');
+
+        // Private document section
+        const privateDocHTML = project.privateDocument ? `
+            <div class="mb-5">
+                <div class="flex items-center justify-between mb-2">
+                    <h4 class="text-sm font-semibold text-gray-500">
+                        <i class="ph ph-lock mr-1"></i> Private Document
+                    </h4>
+                    ${isOwnProject ? '<span class="text-xs text-green-600"><i class="ph ph-check-circle"></i> Your document</span>' : '<span class="text-xs text-gray-400">Available upon request</span>'}
+                </div>
+                <div class="bg-gray-50 rounded-xl p-4">
+                    <h5 class="font-semibold text-gray-800 mb-2">${project.privateDocument.title || 'Private Document'}</h5>
+                    ${isOwnProject ? `
+                        <p class="text-sm text-gray-600">${project.privateDocument.content}</p>
+                    ` : `
+                        <div class="text-center py-2">
+                            <p class="text-sm text-gray-500 mb-3">This content is private. Request access to view.</p>
+                            <button class="px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition">
+                                <i class="ph ph-envelope mr-1"></i> Request Access
+                            </button>
+                        </div>
+                    `}
+                </div>
+            </div>
+        ` : '';
+
+        const html = `
+            <div class="modal-overlay" onclick="event.target === this && Modal.close()">
+                <div class="modal-content w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
+                    <button onclick="Modal.close()" class="absolute top-4 right-4 w-10 h-10 bg-white rounded-full shadow-lg flex items-center justify-center text-gray-500 hover:text-gray-700 z-10">
+                        <i class="ph ph-x text-xl"></i>
+                    </button>
+                    
+                    <!-- Cover -->
+                    <div class="relative">
+                        <div class="w-full h-40 bg-gradient-to-r from-green-500 to-emerald-500 flex items-center justify-center">
+                            <i class="ph ph-rocket-launch text-5xl text-white/50"></i>
+                        </div>
+                        <div class="absolute bottom-4 left-6">
+                            <span class="px-3 py-1 bg-white/20 text-white text-sm font-bold rounded-full">PROJECT</span>
+                        </div>
+                    </div>
+                    
+                    <div class="p-5">
+                        <!-- Title -->
+                        <h2 class="text-2xl font-bold text-gray-800 mb-2">${project.title}</h2>
+                        
+                        <!-- Owner -->
+                        <div class="flex items-center gap-3 mb-4">
+                            <img src="${project.owner.photo}" alt="${project.owner.name}" class="w-10 h-10 rounded-full">
+                            <div>
+                                <p class="font-medium text-gray-800">${project.owner.name}</p>
+                                <p class="text-xs text-gray-500">Project Owner</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Location & Date -->
+                        <div class="flex items-center gap-4 text-sm text-gray-500 mb-4">
+                            <span class="flex items-center gap-1">
+                                <i class="ph ph-map-pin"></i> ${project.location}
+                            </span>
+                            <span class="flex items-center gap-1">
+                                <i class="ph ph-clock"></i> ${project.postedDate}
+                            </span>
+                            <span class="bg-gray-100 px-2 py-0.5 rounded-full text-xs">${project.distance}</span>
+                        </div>
+                        
+                        <!-- Work Style -->
+                        <div class="flex flex-wrap gap-2 mb-4">
+                            ${workStyleHTML}
+                        </div>
+                        
+                        <!-- Description -->
+                        <p class="text-gray-600 mb-4">${project.description}</p>
+                        
+                        <!-- Goals -->
+                        <div class="mb-4">
+                            <h4 class="text-sm font-semibold text-gray-500 mb-2">Goals</h4>
+                            <div class="flex flex-wrap gap-2">
+                                ${goalsHTML}
+                            </div>
+                        </div>
+                        
+                        <!-- Team Needs -->
+                        <div class="mb-4">
+                            <h4 class="text-sm font-semibold text-gray-500 mb-2">Looking For</h4>
+                            <div class="flex flex-wrap gap-2">
+                                ${teamNeedsHTML}
+                            </div>
+                        </div>
+                        
+                        <!-- Tech Stack -->
+                        <div class="mb-4">
+                            <h4 class="text-sm font-semibold text-gray-500 mb-2">Tech Stack</h4>
+                            ${skillsHTML}
+                        </div>
+                        
+                        <!-- Private Document -->
+                        ${privateDocHTML}
+                        
+                        <!-- Action Buttons -->
+                        <div class="flex gap-3 pt-4 border-t">
+                            <button onclick="Modal.close()" class="flex-1 py-3 border-2 border-gray-300 text-gray-600 font-semibold rounded-xl hover:bg-gray-50 transition">
+                                <i class="ph ph-x"></i> Close
+                            </button>
+                            <button onclick="Modal.handleInterest('project', '${project.id}')" class="flex-1 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white font-semibold rounded-xl hover:shadow-lg transition">
+                                <i class="ph ph-heart"></i> Interested
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        const container = document.getElementById('modal-container');
+        container.innerHTML = html;
+    },
+
+    handleInterest(type, id) {
+        // Add to interested list
+        if (type === 'user') {
+            // The user liked a person
+            if (!AppData.currentUser.interestedProjects) {
+                AppData.currentUser.interestedProjects = [];
+            }
+        }
+        
+        // Show interest and close modal
+        alert('Interest expressed! If there\'s a match, you\'ll be notified.');
+        Modal.close();
+    },
+
     showProfileModal(user) {
+        // Get user's owned projects
+        const userProjects = AppData.projects.filter(p => user.ownedProjects && user.ownedProjects.includes(p.id));
+        const interestedCount = user.interestedProjects ? user.interestedProjects.length : 0;
+        
+        // Check if this is current user's profile
+        const isOwnProfile = user.id === AppData.currentUser.id;
+        
         const skillsHTML = user.skills.map(skill => `
             <div class="flex items-center gap-2 mb-1">
                 <span class="text-xs text-gray-600 w-20 truncate">${skill.name}</span>
@@ -152,6 +498,47 @@ const Modal = {
         const workStyleHTML = user.workStyle.map(style => 
             `<span class="px-2 py-1 bg-green-50 text-green-700 rounded-full text-xs font-medium">${style}</span>`
         ).join('');
+
+        // Private document section
+        const privateDocHTML = user.privateDocument ? `
+            <div class="mb-4">
+                <div class="flex items-center justify-between mb-2">
+                    <h3 class="font-semibold text-gray-800">
+                        <i class="ph ph-lock mr-1"></i> Private Document
+                    </h3>
+                    <span class="text-xs text-green-600"><i class="ph ph-check-circle"></i> ${isOwnProfile ? 'Your document' : 'Available'}</span>
+                </div>
+                <div class="bg-gray-50 rounded-xl p-4">
+                    <h5 class="font-medium text-gray-800 mb-1">${user.privateDocument.title || 'Private Document'}</h5>
+                    <p class="text-sm text-gray-600 line-clamp-2">${user.privateDocument.content || 'No content yet'}</p>
+                </div>
+            </div>
+        ` : '';
+
+        // Projects list HTML
+        const projectsListHTML = userProjects.length > 0 ? `
+            <div class="mb-4">
+                <h3 class="font-semibold text-gray-800 mb-2">
+                    <i class="ph ph-folder mr-1"></i> Your Projects (${userProjects.length})
+                </h3>
+                <div class="space-y-2">
+                    ${userProjects.map(project => `
+                        <div class="bg-green-50 rounded-lg p-3 cursor-pointer hover:bg-green-100 transition" onclick="Modal.showProjectDetailModal(AppData.projects.find(p => p.id === '${project.id}'))">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 bg-gradient-to-r from-green-500 to-emerald-500 rounded-lg flex items-center justify-center">
+                                    <i class="ph ph-rocket-launch text-white"></i>
+                                </div>
+                                <div class="flex-1">
+                                    <h5 class="font-medium text-gray-800 text-sm">${project.title}</h5>
+                                    <p class="text-xs text-gray-500">${project.distance}</p>
+                                </div>
+                                <i class="ph ph-arrow-right text-gray-400"></i>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        ` : '';
 
         const html = `
             <div class="modal-overlay" onclick="event.target === this && Modal.close()">
@@ -172,15 +559,18 @@ const Modal = {
                             <div>
                                 <h2 class="text-2xl font-bold text-gray-800">${user.name}</h2>
                             </div>
-                            <button class="px-4 py-2 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700 transition">
-                                <i class="ph ph-pencil"></i> Edit
-                            </button>
+                            ${isOwnProfile ? `
+                                <button onclick="Signup.show()" class="px-4 py-2 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700 transition">
+                                    <i class="ph ph-pencil"></i> Edit
+                                </button>
+                            ` : ''}
                         </div>
                         
                         <!-- Location -->
                         <div class="flex items-center gap-2 text-sm text-gray-600 mb-4">
                             <i class="ph ph-map-pin"></i>
                             <span>${user.location}</span>
+                            <span class="text-xs bg-gray-100 px-2 py-0.5 rounded-full">${user.distance}</span>
                         </div>
                         
                         <!-- Work Style -->
@@ -214,20 +604,30 @@ const Modal = {
                             </div>
                         </div>
                         
+                        <!-- Private Document -->
+                        ${privateDocHTML}
+                        
+                        <!-- Projects List -->
+                        ${projectsListHTML}
+                        
                         <div class="border-t pt-4">
                             <h3 class="font-semibold text-gray-800 mb-3">Stats</h3>
-                            <div class="grid grid-cols-3 gap-4 text-center">
+                            <div class="grid grid-cols-4 gap-2 text-center">
                                 <div class="p-3 bg-gray-50 rounded-lg">
-                                    <div class="text-2xl font-bold text-indigo-600">${AppData.matches.length}</div>
+                                    <div class="text-xl font-bold text-indigo-600">${AppData.matches.length}</div>
                                     <div class="text-xs text-gray-500">Matches</div>
                                 </div>
                                 <div class="p-3 bg-gray-50 rounded-lg">
-                                    <div class="text-2xl font-bold text-indigo-600">${AppData.swiped.users.length}</div>
+                                    <div class="text-xl font-bold text-indigo-600">${AppData.swiped.users.length}</div>
                                     <div class="text-xs text-gray-500">Viewed</div>
                                 </div>
                                 <div class="p-3 bg-gray-50 rounded-lg">
-                                    <div class="text-2xl font-bold text-indigo-600">${user.skills.length}</div>
-                                    <div class="text-xs text-gray-500">Skills</div>
+                                    <div class="text-xl font-bold text-green-600">${userProjects.length}</div>
+                                    <div class="text-xs text-gray-500">Projects</div>
+                                </div>
+                                <div class="p-3 bg-gray-50 rounded-lg">
+                                    <div class="text-xl font-bold text-pink-600">${interestedCount}</div>
+                                    <div class="text-xs text-gray-500">Interested</div>
                                 </div>
                             </div>
                         </div>

@@ -2,11 +2,19 @@
 
 const App = {
     init() {
-        console.log('CollaMatch - Initializing...');
+        console.log('SynCo - Initializing...');
         
         // Initialize components
         Navbar.render();
-        Swiper.init();
+        
+        // Check if user has completed profile, otherwise show signup
+        if (!AppData.currentUser.name || AppData.currentUser.name === 'Alex Chen') {
+            // Show browse screen by default (it will work with default data)
+            Browse.init();
+        } else {
+            // User has profile, show browse
+            Browse.init();
+        }
         
         // Setup bottom navigation
         this.setupNavigation();
@@ -14,7 +22,7 @@ const App = {
         // Add animation to buttons
         this.setupButtonAnimations();
         
-        console.log('CollaMatch - Ready!');
+        console.log('SynCo - Ready!');
     },
 
     setupNavigation() {
@@ -45,8 +53,8 @@ const App = {
         
         switch(page) {
             case 'discover':
-                // Already on discover page, do nothing
-                location.reload();
+                // Show browse screen
+                Browse.init();
                 break;
             case 'matches':
                 this.showMatchesPage();
@@ -57,6 +65,9 @@ const App = {
                 break;
             case 'profile':
                 Modal.showProfileModal(AppData.currentUser);
+                break;
+            case 'signup':
+                Signup.show();
                 break;
         }
     },
