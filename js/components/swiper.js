@@ -166,21 +166,46 @@ const Swiper = {
         AppData.swiped[storageKey].push(item.id);
         
         if (direction === 'like') {
-            // Simulate a match (in real app, this would check if the other person liked us)
-            const isMatch = Math.random() > 0.5;
-            
-            if (isMatch) {
-                AppData.matches.push({
-                    id: item.id,
-                    item: item,
-                    matchedAt: new Date().toISOString(),
-                    expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24 hours
-                });
+            // When liking a user (collaborator), check if they have projects
+            if (cardType === 'user') {
+                const userProjects = item.ownedProjects || [];
                 
-                setTimeout(() => {
-                    Modal.showMatch(item);
-                }, 500);
+                if (userProjects.length > 0) {
+                    // User has projects - show project selection popup
+                    // First, get the actual project objects
+                    const availableProjects = AppData.projects.filter(p => userProjects.includes(p.id));
+                    
+                    // Show the project selection modal
+                    setTimeout(() => {
+                        Modal.showProjectSelection(item, availableProjects);
+                    }, 300);
+                } else {
+                    // No projects, proceed with normal match logic
+                    this.createMatch(item);
+                }
+            } else {
+                // Liking a project - proceed with normal match logic
+                this.createMatch(item);
             }
+        }
+    },
+
+    // Create a match with the item
+    createMatch(item) {
+        // Simulate a match (in real app, this would check if the other person liked us)
+        const isMatch = Math.random() > 0.5;
+        
+        if (isMatch) {
+            AppData.matches.push({
+                id: item.id,
+                item: item,
+                matchedAt: new Date().toISOString(),
+                expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24 hours
+            });
+            
+            setTimeout(() => {
+                Modal.showMatch(item);
+            }, 500);
         }
     },
 

@@ -33,7 +33,7 @@ const Navbar = {
     attachEventListeners() {
         // Profile button click
         document.getElementById('btn-profile')?.addEventListener('click', () => {
-            Modal.showProfileModal(AppData.currentUser);
+            App.navigateTo('profile');
         });
 
         // Notifications button click

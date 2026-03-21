@@ -640,6 +640,133 @@ const Modal = {
         container.innerHTML = html;
     },
 
+    // Store selected user and projects for matching
+    _pendingMatch: null,
+
+    showProjectSelection(swipedUser, userProjects) {
+        const popup = document.getElementById('match-popup');
+        
+        // Store the pending match data
+        this._pendingMatch = {
+            user: swipedUser,
+            userProjects: userProjects
+        };
+        
+        // Generate projects list HTML
+        const projectsHTML = userProjects.map(project => `
+            <div class="project-option bg-white/10 rounded-xl p-4 cursor-pointer hover:bg-white/20 transition border-2 border-transparent hover:border-indigo-400" onclick="Modal.selectProjectForMatch('${project.id}')">
+                <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 rounded-lg bg-gradient-to-r from-green-500 to-emerald-500 flex items-center justify-center">
+                        <i class="ph ph-rocket-launch text-xl text-white"></i>
+                    </div>
+                    <div class="flex-1 text-left">
+                        <h4 class="font-semibold text-white">${project.title}</h4>
+                        <p class="text-xs text-gray-300">${project.goals?.[0] || 'View project details'}</p>
+                    </div>
+                    <i class="ph ph-caret-right text-gray-400"></i>
+                </div>
+            </div>
+        `).join('');
+
+        const html = `
+            <div class="text-center">
+                <h2 class="text-2xl font-bold mb-2">Select a Project</h2>
+                <p class="text-gray-300 mb-2">${swipedUser.name} has projects available!</p>
+                <p class="text-indigo-300 text-sm mb-6">Choose one of your projects to match</p>
+                
+                <div class="flex items-center justify-center gap-3 mb-6">
+                    <div class="w-16 h-16 rounded-full overflow-hidden border-2 border-white">
+                        <img src="${swipedUser.photo}" alt="${swipedUser.name}" class="w-full h-full object-cover">
+                    </div>
+                    <i class="ph ph-arrow-right text-2xl text-gray-400"></i>
+                    <div class="w-16 h-16 rounded-full overflow-hidden border-2 border-white bg-gradient-to-r from-green-500 to-emerald-500 flex items-center justify-center">
+                        <i class="ph ph-folder-open text-2xl text-white"></i>
+                    </div>
+                </div>
+                
+                <div class="space-y-3 mb-6 max-h-64 overflow-y-auto">
+                    ${projectsHTML}
+                </div>
+                
+                <button onclick="Modal.closeMatch()" class="px-8 py-3 bg-transparent border-2 border-white text-white font-semibold rounded-full hover:bg-white/10 transition w-full">
+                    Cancel
+                </button>
+            </div>
+        `;
+
+        popup.innerHTML = html;
+        popup.classList.remove('hidden');
+    },
+
+    selectProjectForMatch(projectId) {
+        if (!this._pendingMatch) return;
+        
+        const { user, userProjects } = this._pendingMatch;
+        const selectedProject = userProjects.find(p => p.id === projectId);
+        
+        if (!selectedProject) return;
+        
+        // Create the match with the selected project
+        const matchItem = {
+            ...user,
+            matchedProject: selectedProject
+        };
+        
+        AppData.matches.push({
+            id: user.id,
+            item: matchItem,
+            matchedAt: new Date().toISOString(),
+            expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+        });
+        
+        // Clear pending match
+        this._pendingMatch = null;
+        
+        // Show the match popup with the selected project
+        this.closeMatch();
+        setTimeout(() => {
+            this.showMatchWithProject(user, selectedProject);
+        }, 300);
+    },
+
+    showMatchWithProject(user, project) {
+        const popup = document.getElementById('match-popup');
+        
+        const html = `
+            <div class="text-center">
+                <h2 class="text-4xl font-bold mb-4">It's a Match! 🎉</h2>
+                <p class="text-gray-300 mb-2">You and ${user.name} are both interested!</p>
+                <p class="text-indigo-300 text-sm mb-6">Matched on project: <span class="text-white font-semibold">${project.title}</span></p>
+                
+                <div class="flex items-center justify-center gap-4 mb-8">
+                    <div class="w-28 h-28 rounded-full overflow-hidden border-4 border-white">
+                        <img src="${AppData.currentUser.photo}" alt="You" class="w-full h-full object-cover">
+                    </div>
+                    <i class="ph ph-heart text-4xl text-red-500"></i>
+                    <div class="w-28 h-28 rounded-full overflow-hidden border-4 border-white">
+                        <img src="${user.photo}" alt="${user.name}" class="w-full h-full object-cover">
+                    </div>
+                </div>
+                
+                <div class="bg-white/10 rounded-xl p-4 mb-6 max-w-xs mx-auto">
+                    <p class="text-sm text-gray-300">Your 24-hour structured chat has opened. Use the guided prompts to get to know each other!</p>
+                </div>
+                
+                <div class="flex flex-col gap-3">
+                    <button onclick="Modal.closeMatch(); App.navigateTo('chats');" class="px-8 py-3 bg-white text-indigo-600 font-semibold rounded-full hover:bg-gray-100 transition">
+                        <i class="ph ph-chat"></i> Start Chat
+                    </button>
+                    <button onclick="Modal.closeMatch()" class="px-8 py-3 bg-transparent border-2 border-white text-white font-semibold rounded-full hover:bg-white/10 transition">
+                        Keep Browsing
+                    </button>
+                </div>
+            </div>
+        `;
+
+        popup.innerHTML = html;
+        popup.classList.remove('hidden');
+    },
+
     showMatch(item) {
         const popup = document.getElementById('match-popup');
         
@@ -664,7 +791,7 @@ const Modal = {
                 </div>
                 
                 <div class="flex flex-col gap-3">
-                    <button onclick="Modal.closeMatch(); App.navigateTo('messages');" class="px-8 py-3 bg-white text-indigo-600 font-semibold rounded-full hover:bg-gray-100 transition">
+                    <button onclick="Modal.closeMatch(); App.navigateTo('chats');" class="px-8 py-3 bg-white text-indigo-600 font-semibold rounded-full hover:bg-gray-100 transition">
                         <i class="ph ph-chat"></i> Start Chat
                     </button>
                     <button onclick="Modal.closeMatch()" class="px-8 py-3 bg-transparent border-2 border-white text-white font-semibold rounded-full hover:bg-white/10 transition">
@@ -676,6 +803,208 @@ const Modal = {
 
         popup.innerHTML = html;
         popup.classList.remove('hidden');
+    },
+
+    // Show create project modal
+    showCreateProjectModal() {
+        const container = document.getElementById('modal-container');
+        
+        const html = `
+            <div class="modal-overlay" onclick="event.target === this && Modal.close()">
+                <div class="modal-content p-6 max-h-[90vh] overflow-y-auto">
+                    <div class="flex items-center justify-between mb-6">
+                        <h3 class="text-xl font-bold text-gray-800">Create New Project</h3>
+                        <button onclick="Modal.close()" class="text-gray-400 hover:text-gray-600">
+                            <i class="ph ph-x text-xl"></i>
+                        </button>
+                    </div>
+                    
+                    <form id="create-project-form" class="space-y-4">
+                        <!-- Project Title -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Project Title</label>
+                            <input type="text" id="project-title" required placeholder="e.g., E-commerce Platform"
+                                class="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                        </div>
+                        
+                        <!-- Description -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                            <textarea id="project-description" rows="3" required placeholder="Describe your project..."
+                                class="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"></textarea>
+                        </div>
+                        
+                        <!-- Looking For -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Looking For (select all that apply)</label>
+                            <div class="flex flex-wrap gap-2">
+                                <button type="button" class="team-need-btn px-3 py-2 rounded-full border text-sm font-medium transition border-gray-200 text-gray-600 hover:border-green-300" data-value="Co-founder">
+                                    Co-founder
+                                </button>
+                                <button type="button" class="team-need-btn px-3 py-2 rounded-full border text-sm font-medium transition border-gray-200 text-gray-600 hover:border-green-300" data-value="Frontend Developer">
+                                    Frontend Developer
+                                </button>
+                                <button type="button" class="team-need-btn px-3 py-2 rounded-full border text-sm font-medium transition border-gray-200 text-gray-600 hover:border-green-300" data-value="Backend Developer">
+                                    Backend Developer
+                                </button>
+                                <button type="button" class="team-need-btn px-3 py-2 rounded-full border text-sm font-medium transition border-gray-200 text-gray-600 hover:border-green-300" data-value="Designer">
+                                    Designer
+                                </button>
+                                <button type="button" class="team-need-btn px-3 py-2 rounded-full border text-sm font-medium transition border-gray-200 text-gray-600 hover:border-green-300" data-value="Marketing">
+                                    Marketing
+                                </button>
+                                <button type="button" class="team-need-btn px-3 py-2 rounded-full border text-sm font-medium transition border-gray-200 text-gray-600 hover:border-green-300" data-value="Other">
+                                    Other
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Work Style -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Work Style (select all that apply)</label>
+                            <div class="flex flex-wrap gap-2">
+                                <button type="button" class="workstyle-btn px-3 py-2 rounded-full border text-sm font-medium transition border-gray-200 text-gray-600 hover:border-green-300" data-value="Deep Work">
+                                    Deep Work
+                                </button>
+                                <button type="button" class="workstyle-btn px-3 py-2 rounded-full border text-sm font-medium transition border-gray-200 text-gray-600 hover:border-green-300" data-value="Async">
+                                    Async
+                                </button>
+                                <button type="button" class="workstyle-btn px-3 py-2 rounded-full border text-sm font-medium transition border-gray-200 text-gray-600 hover:border-green-300" data-value="Collaborative">
+                                    Collaborative
+                                </button>
+                                <button type="button" class="workstyle-btn px-3 py-2 rounded-full border text-sm font-medium transition border-gray-200 text-gray-600 hover:border-green-300" data-value="Casual">
+                                    Casual
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Availability -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Team Availability</label>
+                            <div class="grid grid-cols-2 gap-2">
+                                <button type="button" class="availability-btn px-4 py-2 rounded-lg border text-sm font-medium transition border-gray-200 text-gray-600 hover:border-green-300" data-value="5-10 hrs/week">
+                                    5-10 hrs/week
+                                </button>
+                                <button type="button" class="availability-btn px-4 py-2 rounded-lg border text-sm font-medium transition border-gray-200 text-gray-600 hover:border-green-300" data-value="10-15 hrs/week">
+                                    10-15 hrs/week
+                                </button>
+                                <button type="button" class="availability-btn px-4 py-2 rounded-lg border text-sm font-medium transition border-gray-200 text-gray-600 hover:border-green-300" data-value="15-20 hrs/week">
+                                    15-20 hrs/week
+                                </button>
+                                <button type="button" class="availability-btn px-4 py-2 rounded-lg border text-sm font-medium transition border-gray-200 text-gray-600 hover:border-green-300" data-value="20+ hrs/week">
+                                    20+ hrs/week
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Location -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Location</label>
+                            <input type="text" id="project-location" placeholder="City, State (or Remote)"
+                                class="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                        </div>
+                        
+                        <!-- Submit Button -->
+                        <button type="submit" class="w-full py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-semibold rounded-xl hover:shadow-lg transition">
+                            Create Project
+                        </button>
+                    </form>
+                </div>
+            </div>
+        `;
+        
+        container.innerHTML = html;
+        
+        // Setup form handling
+        const form = document.getElementById('create-project-form');
+        const teamNeeds = [];
+        const workStyles = [];
+        let availability = '10-15 hrs/week';
+        
+        // Team need buttons
+        document.querySelectorAll('.team-need-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const value = btn.dataset.value;
+                if (teamNeeds.includes(value)) {
+                    teamNeeds.splice(teamNeeds.indexOf(value), 1);
+                    btn.classList.remove('border-green-500', 'bg-green-50', 'text-green-700');
+                    btn.classList.add('border-gray-200', 'text-gray-600');
+                } else {
+                    teamNeeds.push(value);
+                    btn.classList.add('border-green-500', 'bg-green-50', 'text-green-700');
+                    btn.classList.remove('border-gray-200', 'text-gray-600');
+                }
+            });
+        });
+        
+        // Workstyle buttons
+        document.querySelectorAll('.workstyle-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const value = btn.dataset.value;
+                if (workStyles.includes(value)) {
+                    workStyles.splice(workStyles.indexOf(value), 1);
+                    btn.classList.remove('border-green-500', 'bg-green-50', 'text-green-700');
+                    btn.classList.add('border-gray-200', 'text-gray-600');
+                } else {
+                    workStyles.push(value);
+                    btn.classList.add('border-green-500', 'bg-green-50', 'text-green-700');
+                    btn.classList.remove('border-gray-200', 'text-gray-600');
+                }
+            });
+        });
+        
+        // Availability buttons
+        document.querySelectorAll('.availability-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                availability = btn.dataset.value;
+                document.querySelectorAll('.availability-btn').forEach(b => {
+                    b.classList.remove('border-green-500', 'bg-green-50', 'text-green-700');
+                    b.classList.add('border-gray-200', 'text-gray-600');
+                });
+                btn.classList.add('border-green-500', 'bg-green-50', 'text-green-700');
+                btn.classList.remove('border-gray-200', 'text-gray-600');
+            });
+        });
+        
+        // Set default availability
+        document.querySelector('.availability-btn[data-value="10-15 hrs/week"]')?.classList.add('border-green-500', 'bg-green-50', 'text-green-700');
+        
+        // Form submit
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            const newProject = {
+                id: 'project_' + Date.now(),
+                title: document.getElementById('project-title').value,
+                description: document.getElementById('project-description').value,
+                teamNeeds: teamNeeds,
+                workStyle: workStyles,
+                availability: availability,
+                location: document.getElementById('project-location').value || 'Remote',
+                distance: '0 miles',
+                distanceValue: 0,
+                owner: {
+                    id: AppData.currentUser.id,
+                    name: AppData.currentUser.name,
+                    photo: AppData.currentUser.photo
+                },
+                createdAt: new Date().toISOString(),
+                lookingFor: ['Collaborators']
+            };
+            
+            // Add to AppData
+            AppData.projects.push(newProject);
+            
+            // Add to user's owned projects
+            if (!AppData.currentUser.ownedProjects) {
+                AppData.currentUser.ownedProjects = [];
+            }
+            AppData.currentUser.ownedProjects.push(newProject.id);
+            
+            // Close modal and refresh profile
+            Modal.close();
+            App.navigateTo('profile');
+        });
     },
 
     close() {
