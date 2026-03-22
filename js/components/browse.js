@@ -602,6 +602,14 @@ const Browse = {
             const user = AppData.collaborators.find(u => u.id === id);
             if (!user) return;
             
+            // Check if chat already exists with this user
+            const existingChat = AppData.chats?.find(c => c.participant && c.participant.id === id);
+            if (existingChat) {
+                alert('You already have a chat with ' + user.name + '!');
+                this.render();
+                return;
+            }
+            
             // Create match
             const match = {
                 id: 'match-' + Date.now(),
@@ -620,7 +628,11 @@ const Browse = {
             // Create a 24h chat
             const chat = {
                 id: 'chat-' + Date.now(),
-                participant: user,
+                participant: {
+                    id: user.id,
+                    name: user.name,
+                    photo: user.photo
+                },
                 project: selectedProject,
                 messages: [],
                 unread: 0,
@@ -642,6 +654,14 @@ const Browse = {
             const owner = AppData.collaborators.find(u => u.id === project.owner.id);
             if (!owner) return;
             
+            // Check if chat already exists with this project owner
+            const existingChat = AppData.chats?.find(c => c.participant && c.participant.id === owner.id);
+            if (existingChat) {
+                alert('You already have a chat with ' + owner.name + '!');
+                this.render();
+                return;
+            }
+            
             // Create match
             const match = {
                 id: 'match-' + Date.now(),
@@ -655,7 +675,11 @@ const Browse = {
             // Create a 24h chat
             const chat = {
                 id: 'chat-' + Date.now(),
-                participant: owner,
+                participant: {
+                    id: owner.id,
+                    name: owner.name,
+                    photo: owner.photo
+                },
                 project: project,
                 messages: [],
                 unread: 0,
@@ -664,6 +688,9 @@ const Browse = {
             };
             
             AppData.chats.push(chat);
+            
+            // Save chat to database
+            await Database.saveChat(chat);
             
             // Show match modal
             this.showMatchModal(owner, project);

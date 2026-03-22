@@ -184,8 +184,8 @@ const Swiper = {
                     this.createMatch(item);
                 }
             } else {
-                // Liking a project - proceed with normal match logic
-                this.createMatch(item);
+                // Liking a project - use Browse.processLike for proper match and chat creation
+                Browse.processLike(item.id, 'project');
             }
         }
     },

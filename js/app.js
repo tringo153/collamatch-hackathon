@@ -350,6 +350,21 @@ const App = {
                 // Save target user to database
                 await Database.saveCollaborator(targetUser);
                 
+                // Check if chat already exists with this user
+                const existingChat = AppData.chats?.find(c => c.participant && c.participant.id === targetId);
+                if (existingChat) {
+                    alert('You already have a chat with ' + targetUser.name + '!');
+                    // Still remove from matches list
+                    if (!AppData.swiped) {
+                        AppData.swiped = { users: [], projects: [] };
+                    }
+                    if (!AppData.swiped.users.includes(targetId)) {
+                        AppData.swiped.users.push(targetId);
+                    }
+                    App.showMatchesPage();
+                    return;
+                }
+                
                 // Create match
                 const matchId = `match-${Date.now()}`;
                 const match = {
@@ -362,17 +377,29 @@ const App = {
                 
                 await Database.add('matches', match);
                 
-                // Create initial chat (empty messages)
+                // Create chat with proper structure for Chat component
                 const chat = {
                     id: matchId,
-                    matchId: matchId,
-                    participants: [currentUserIdAlt, targetId],
+                    participant: {
+                        id: targetUser.id,
+                        name: targetUser.name,
+                        photo: targetUser.photo
+                    },
+                    project: project,
                     messages: [],
-                    createdAt: new Date().toISOString(),
-                    expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+                    unread: 0,
+                    expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+                    status: 'active'
                 };
                 
-                await Database.add('chats', chat);
+                // Add to AppData.chats
+                if (!AppData.chats) {
+                    AppData.chats = [];
+                }
+                AppData.chats.push(chat);
+                
+                // Save to database
+                await Database.saveChat(chat);
                 
                 // Add to swiped list so user is removed from matches
                 if (!AppData.swiped) {
@@ -382,8 +409,8 @@ const App = {
                     AppData.swiped.users.push(targetId);
                 }
                 
-                // Navigate to chat
-                App.showChatsPage();
+                // Navigate to chat list
+                Chat.showChatList();
                 return;
             }
         }
@@ -429,11 +456,34 @@ const App = {
         
         // Find the project owner
         const projectOwner = AppData.collaborators.find(u => u.id === ownerId);
+        if (!projectOwner) {
+            alert('Project owner not found');
+            return;
+        }
         
-        // Create chat with project owner
+        // Check if chat already exists with this project owner
+        const existingChat = AppData.chats?.find(c => c.participant && c.participant.id === ownerId);
+        if (existingChat) {
+            alert('You already have a chat with ' + projectOwner.name + '!');
+            // Still remove project from matches list
+            if (!AppData.swiped) {
+                AppData.swiped = { users: [], projects: [] };
+            }
+            if (!AppData.swiped.projects.includes(projectId)) {
+                AppData.swiped.projects.push(projectId);
+            }
+            this.showMatchesPage();
+            return;
+        }
+        
+        // Create chat with project owner - proper structure for Chat component
         const chat = {
             id: 'chat-project-' + Date.now(),
-            participants: [currentUserIdAlt, ownerId],
+            participant: {
+                id: projectOwner.id,
+                name: projectOwner.name,
+                photo: projectOwner.photo
+            },
             project: project,
             messages: [],
             unread: 0,
@@ -441,13 +491,24 @@ const App = {
             status: 'active'
         };
         
+        if (!AppData.chats) {
+            AppData.chats = [];
+        }
         AppData.chats.push(chat);
         await Database.saveChat(chat);
         
-        alert('Chat created with ' + (projectOwner?.name || 'project owner') + '!');
+        // Remove project from matches list
+        if (!AppData.swiped) {
+            AppData.swiped = { users: [], projects: [] };
+        }
+        if (!AppData.swiped.projects.includes(projectId)) {
+            AppData.swiped.projects.push(projectId);
+        }
         
-        // Refresh matches page
-        this.showMatchesPage();
+        alert('Chat created with ' + projectOwner.name + '!');
+        
+        // Navigate to chat list
+        Chat.showChatList();
     },
 
     // Decline a project match - remove from list
