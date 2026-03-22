@@ -159,7 +159,8 @@ const App = {
                             if (project) {
                                 matchedProjects.push({
                                     project: project,
-                                    matchedBy: collab.name
+                                    matchedBy: collab.name,
+                                    owner: project.owner
                                 });
                             }
                         }
@@ -214,8 +215,8 @@ const App = {
                             <button onclick="App.likeBack('${user.id}', 'user', '${user.project?.id || ''}')" class="flex-1 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition">
                                 <i class="ph ph-heart mr-1"></i> Like Back
                             </button>
-                            <button onclick="Modal.showUserDetailModal(AppData.collaborators.find(u => u.id === '${user.id}'))" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50 transition">
-                                <i class="ph ph-eye"></i>
+                            <button onclick="App.declinePeopleMatch('${user.id}')" class="px-4 py-2 border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50 transition">
+                                <i class="ph ph-x"></i>
                             </button>
                         </div>
                     </div>
@@ -254,6 +255,12 @@ const App = {
                         <div class="mt-3 flex gap-2">
                             <button onclick="Modal.showProjectDetailModal(AppData.projects.find(p => p.id === '${item.project.id}'))" class="flex-1 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition">
                                 <i class="ph ph-eye mr-1"></i> View Project
+                            </button>
+                            <button onclick="App.acceptProjectMatch('${item.project.id}', '${item.project.owner?.id || ''}')" class="flex-1 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition">
+                                <i class="ph ph-check mr-1"></i> Accept
+                            </button>
+                            <button onclick="App.declineProjectMatch('${item.project.id}', '${item.project.owner?.id || ''}')" class="px-4 py-2 border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50 transition">
+                                <i class="ph ph-x"></i>
                             </button>
                         </div>
                     </div>
@@ -355,22 +362,25 @@ const App = {
                 
                 await Database.add('matches', match);
                 
-                // Create initial chat
+                // Create initial chat (empty messages)
                 const chat = {
                     id: matchId,
                     matchId: matchId,
                     participants: [currentUserIdAlt, targetId],
-                    messages: [{
-                        id: `msg-${Date.now()}`,
-                        senderId: 'system',
-                        content: `You matched with ${targetUser.name}! Start a conversation within 24 hours.`,
-                        timestamp: new Date().toISOString()
-                    }],
+                    messages: [],
                     createdAt: new Date().toISOString(),
                     expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
                 };
                 
                 await Database.add('chats', chat);
+                
+                // Add to swiped list so user is removed from matches
+                if (!AppData.swiped) {
+                    AppData.swiped = { users: [], projects: [] };
+                }
+                if (!AppData.swiped.users.includes(targetId)) {
+                    AppData.swiped.users.push(targetId);
+                }
                 
                 // Navigate to chat
                 App.showChatsPage();
@@ -378,8 +388,15 @@ const App = {
             }
         }
         
+        // Add to swiped list so user is removed from matches
+        if (!AppData.swiped) {
+            AppData.swiped = { users: [], projects: [] };
+        }
+        if (!AppData.swiped.users.includes(targetId)) {
+            AppData.swiped.users.push(targetId);
+        }
+        
         if (!isMatch) {
-            alert('Like sent! If they like you back, it will be a match.');
             // Refresh the matches page
             App.showMatchesPage();
         }
@@ -403,14 +420,69 @@ const App = {
         document.getElementById(`match-${tab}`).classList.remove('hidden');
     },
 
+    // Accept a project match - create chat with project owner
+    async acceptProjectMatch(projectId, ownerId) {
+        const project = AppData.projects.find(p => p.id === projectId);
+        if (!project) return;
+        
+        const currentUserIdAlt = AppData.currentUser?.originalId || 'user-1';
+        
+        // Find the project owner
+        const projectOwner = AppData.collaborators.find(u => u.id === ownerId);
+        
+        // Create chat with project owner
+        const chat = {
+            id: 'chat-project-' + Date.now(),
+            participants: [currentUserIdAlt, ownerId],
+            project: project,
+            messages: [],
+            unread: 0,
+            expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+            status: 'active'
+        };
+        
+        AppData.chats.push(chat);
+        await Database.saveChat(chat);
+        
+        alert('Chat created with ' + (projectOwner?.name || 'project owner') + '!');
+        
+        // Refresh matches page
+        this.showMatchesPage();
+    },
+
+    // Decline a project match - remove from list
+    declineProjectMatch(projectId, ownerId) {
+        // Remove from matchedProjects by adding to swiped projects
+        if (!AppData.swiped) {
+            AppData.swiped = { users: [], projects: [] };
+        }
+        if (!AppData.swiped.projects.includes(projectId)) {
+            AppData.swiped.projects.push(projectId);
+        }
+        
+        // Refresh matches page
+        this.showMatchesPage();
+    },
+
+    // Decline a people match - remove from list
+    declinePeopleMatch(userId) {
+        // Add to swiped users
+        if (!AppData.swiped) {
+            AppData.swiped = { users: [], projects: [] };
+        }
+        if (!AppData.swiped.users.includes(userId)) {
+            AppData.swiped.users.push(userId);
+        }
+        
+        // Refresh matches page
+        this.showMatchesPage();
+    },
+
     showMessagesPage() {
         const main = document.querySelector('main');
         
-        const mockMessages = [
-            { from: 'Sarah Johnson', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop&crop=face', message: 'Hey! I saw your profile and I think you\'d be great for our AI project!', time: '2h ago', unread: true },
-            { from: 'Michael Park', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop&crop=face', message: 'Thanks for connecting! When are you available to chat?', time: '5h ago', unread: false },
-            { from: 'Emily Davis', avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop&crop=face', message: 'I\'d love to discuss the project details with you', time: '1d ago', unread: false }
-        ];
+        // Load chats from AppData
+        const chats = AppData.chats || [];
         
         let html = `
             <section class="max-w-md mx-auto px-4 py-8">
@@ -418,23 +490,37 @@ const App = {
                 <div class="space-y-2">
         `;
         
-        mockMessages.forEach(msg => {
+        if (chats.length === 0) {
             html += `
-                <div class="bg-white rounded-xl p-4 shadow-sm flex items-center gap-4 cursor-pointer hover:shadow-md transition ${msg.unread ? 'border-l-4 border-indigo-500' : ''}">
-                    <div class="relative">
-                        <img src="${msg.avatar}" alt="${msg.from}" class="w-14 h-14 rounded-full object-cover">
-                        ${msg.unread ? '<span class="absolute -top-1 -right-1 w-4 h-4 bg-indigo-600 rounded-full border-2 border-white"></span>' : ''}
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <div class="flex items-center justify-between">
-                            <h3 class="font-semibold text-gray-800 ${msg.unread ? '' : 'font-normal'}">${msg.from}</h3>
-                            <span class="text-xs text-gray-400">${msg.time}</span>
-                        </div>
-                        <p class="text-sm text-gray-600 truncate">${msg.message}</p>
-                    </div>
+                <div class="text-center py-12">
+                    <i class="ph ph-chat-circle text-5xl text-gray-300 mb-4"></i>
+                    <h3 class="text-lg font-semibold text-gray-600 mb-2">No Messages Yet</h3>
+                    <p class="text-gray-400">Start matching to start conversations!</p>
                 </div>
             `;
-        });
+        } else {
+            chats.forEach(chat => {
+                const otherUser = chat.participants?.find(p => p.id !== AppData.currentUser?.originalId && p.id !== 'current') || { name: 'Unknown', photo: '' };
+                const lastMessage = chat.messages?.[chat.messages.length - 1] || { content: 'No messages yet', timestamp: '' };
+                const unread = chat.unread || false;
+                
+                html += `
+                    <div class="bg-white rounded-xl p-4 shadow-sm flex items-center gap-4 cursor-pointer hover:shadow-md transition ${unread ? 'border-l-4 border-indigo-500' : ''}">
+                        <div class="relative">
+                            <img src="${otherUser.photo || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(otherUser.name || 'U') + '&background=6366f1&color=fff&size=128&font-size=0.4&length=1'}" alt="${otherUser.name}" class="w-14 h-14 rounded-full object-cover">
+                            ${unread ? '<span class="absolute -top-1 -right-1 w-4 h-4 bg-indigo-600 rounded-full border-2 border-white"></span>' : ''}
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center justify-between">
+                                <h3 class="font-semibold text-gray-800 ${unread ? '' : 'font-normal'}">${otherUser.name}</h3>
+                                <span class="text-xs text-gray-400">${new Date(lastMessage.timestamp).toLocaleDateString()}</span>
+                            </div>
+                            <p class="text-sm text-gray-600 truncate">${lastMessage.content}</p>
+                        </div>
+                    </div>
+                `;
+            });
+        }
         
         html += `
                 </div>

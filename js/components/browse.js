@@ -43,6 +43,8 @@ const Browse = {
                 if (u.id === currentUserId || u.id === currentUserIdAlt) return false;
                 // Filter out already liked
                 if (likedUserIds.has(u.id)) return false;
+                // Filter out already swiped (skipped) users
+                if (AppData.swiped && AppData.swiped.users && AppData.swiped.users.includes(u.id)) return false;
                 return true;
             })
             .sort((a, b) => {
@@ -132,11 +134,8 @@ const Browse = {
         const userProjects = AppData.projects.filter(p => user.ownedProjects && user.ownedProjects.includes(p.id));
         const interestedCount = user.interestedProjects ? user.interestedProjects.length : 0;
         
-        // Check if already swiped
-        const isSwiped = AppData.swiped.users.includes(user.id);
-        
         return `
-            <div class="browse-card bg-white rounded-xl shadow-sm overflow-hidden cursor-pointer hover:shadow-md transition ${isSwiped ? 'opacity-50' : ''}" data-id="${user.id}" data-type="user">
+            <div class="browse-card bg-white rounded-xl shadow-sm overflow-hidden cursor-pointer hover:shadow-md transition" data-id="${user.id}" data-type="user">
                 <!-- Photo & Distance Badge -->
                 <div class="relative">
                     <img src="${user.photo || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(user.name || 'U') + '&background=6366f1&color=fff&size=400&font-size=0.4&length=1'}" alt="${user.name}" class="w-full h-40 object-cover">
@@ -581,6 +580,15 @@ const Browse = {
     selectProjectForMatch(userId, projectId) {
         // Close the project match modal first
         Modal.closeProjectMatch();
+        
+        // Add to swiped list so user doesn't appear in discovery again
+        if (!AppData.swiped) {
+            AppData.swiped = { users: [], projects: [] };
+        }
+        if (!AppData.swiped.users.includes(userId)) {
+            AppData.swiped.users.push(userId);
+        }
+        
         // Then process the like
         const project = AppData.projects.find(p => p.id === projectId);
         this.processLike(userId, 'user', project);
@@ -609,19 +617,12 @@ const Browse = {
             await Database.addMatch(match);
             
             // Build message based on whether project was selected
-            const projectMessage = selectedProject 
-                ? { id: 'm2', from: 'system', text: '📝 You matched for project: "' + selectedProject.title + '"', time: 'Just now', isSystem: true }
-                : { id: 'm2', from: 'system', text: '📝 You have 24 hours to chat and decide if you want to continue together.', time: 'Just now', isSystem: true };
-            
             // Create a 24h chat
             const chat = {
                 id: 'chat-' + Date.now(),
                 participant: user,
                 project: selectedProject,
-                messages: [
-                    { id: 'm1', from: 'system', text: '🎉 It\'s a Match! You and ' + user.name + ' liked each other!', time: 'Just now', isSystem: true },
-                    projectMessage
-                ],
+                messages: [],
                 unread: 0,
                 expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
                 status: 'active' // 'active', 'continued', 'rejected'
@@ -656,10 +657,7 @@ const Browse = {
                 id: 'chat-' + Date.now(),
                 participant: owner,
                 project: project,
-                messages: [
-                    { id: 'm1', from: 'system', text: '🎉 It\'s a Match! You liked "' + project.title + '" and the owner liked you back!', time: 'Just now', isSystem: true },
-                    { id: 'm2', from: 'system', text: '📝 You have 24 hours to chat and decide if you want to work together.', time: 'Just now', isSystem: true }
-                ],
+                messages: [],
                 unread: 0,
                 expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
                 status: 'active'

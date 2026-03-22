@@ -798,12 +798,22 @@ const Modal = {
             await Database.saveCollaborator(targetUser);
         }
         
+        // Also add to swiped list so user doesn't appear in discovery again
+        if (!AppData.swiped) {
+            AppData.swiped = { users: [], projects: [] };
+        }
+        if (!AppData.swiped.users.includes(user.id)) {
+            AppData.swiped.users.push(user.id);
+        }
+        
         // Clear pending match
         this._pendingMatch = null;
         
-        // Close the modal (try both methods to ensure it closes)
+        // Close the modal
         this.closeProjectMatch();
-        this.closeMatch();
+        
+        // Refresh browse to remove the skipped user from discovery list
+        Browse.init();
     },
 
     showMatchWithProject(user, project) {

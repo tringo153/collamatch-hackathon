@@ -59,12 +59,8 @@ const Navbar = {
     },
 
     showNotifications() {
-        const notifications = [
-            { type: 'match', message: 'You matched with Sarah Johnson!', time: '2h ago' },
-            { type: 'message', message: 'Michael Park sent you a message', time: '5h ago' },
-            { type: 'like', message: 'Emily Davis liked your profile', time: '1d ago' }
-        ];
-
+        const notifications = [];
+        
         let html = `
             <div class="modal-overlay" onclick="event.target === this && Modal.close()">
                 <div class="modal-content w-96 p-6">
@@ -74,28 +70,37 @@ const Navbar = {
                             <i class="ph ph-x text-xl"></i>
                         </button>
                     </div>
-                    <div class="space-y-4">
         `;
-
-        notifications.forEach(notif => {
-            const icon = notif.type === 'match' ? 'ph-heart' : notif.type === 'message' ? 'ph-chat' : 'ph-star';
-            const color = notif.type === 'match' ? 'text-red-500' : notif.type === 'message' ? 'text-blue-500' : 'text-yellow-500';
-            
+        
+        if (notifications.length === 0) {
             html += `
-                <div class="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 cursor-pointer">
-                    <div class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center ${color}">
-                        <i class="ph ${icon} text-xl"></i>
-                    </div>
-                    <div class="flex-1">
-                        <p class="text-sm text-gray-800">${notif.message}</p>
-                        <p class="text-xs text-gray-500">${notif.time}</p>
-                    </div>
+                <div class="text-center py-8">
+                    <i class="ph ph-bell-slash text-4xl text-gray-300 mb-3"></i>
+                    <p class="text-gray-500">No notifications yet</p>
                 </div>
             `;
-        });
+        } else {
+            html += `<div class="space-y-4">`;
+            notifications.forEach(notif => {
+                const icon = notif.type === 'match' ? 'ph-heart' : notif.type === 'message' ? 'ph-chat' : 'ph-star';
+                const color = notif.type === 'match' ? 'text-red-500' : notif.type === 'message' ? 'text-blue-500' : 'text-yellow-500';
+                
+                html += `
+                    <div class="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 cursor-pointer">
+                        <div class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center ${color}">
+                            <i class="ph ${icon} text-xl"></i>
+                        </div>
+                        <div class="flex-1">
+                            <p class="text-sm text-gray-800">${notif.message}</p>
+                            <p class="text-xs text-gray-500">${notif.time}</p>
+                        </div>
+                    </div>
+                `;
+            });
+            html += `</div>`;
+        }
 
         html += `
-                    </div>
                 </div>
             </div>
         `;

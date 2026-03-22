@@ -702,6 +702,11 @@ const Database = {
         
         // For each user who liked current user, check if current user also liked them
         usersWhoLikedCurrent.forEach(userWhoLiked => {
+            // Skip if this is the current user themselves
+            if (userWhoLiked.id === currentUserId || userWhoLiked.id === currentUserIdAlt) {
+                return;
+            }
+            
             // Check if current user also liked this user back
             const currentUserLikedThem = currentUser?.likesSent?.some(like =>
                 like.targetId === userWhoLiked.id
