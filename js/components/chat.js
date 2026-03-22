@@ -441,6 +441,60 @@ const Chat = {
         
         // Show chat list
         this.showChatList();
+    },
+    
+    // Clear all chats - for testing/reset purposes
+    async clearAllChats() {
+        // Clear from AppData
+        AppData.chats = [];
+        this.messages = [];
+        
+        // Clear from database - get all chats and delete them
+        if (Database.db) {
+            const tx = Database.db.transaction(['chats'], 'readwrite');
+            const store = tx.objectStore('chats');
+            await new Promise((resolve, reject) => {
+                const request = store.clear();
+                request.onsuccess = () => resolve();
+                request.onerror = () => reject(request.error);
+            });
+        }
+        
+        console.log('All chat data cleared');
+    },
+    
+    // Clear chats for a specific user (by participant name or ID)
+    async clearChatsForUser(userNameOrId) {
+        // Find user ID from name
+        let userId = userNameOrId;
+        const user = AppData.collaborators.find(c => c.name.toLowerCase() === userNameOrId.toLowerCase());
+        if (user) {
+            userId = user.id;
+        }
+        
+        // Filter chats that involve this user
+        const chatsToDelete = AppData.chats.filter(chat => 
+            chat.participant.id === userId || 
+            chat.participant.name.toLowerCase() === userNameOrId.toLowerCase()
+        );
+        
+        // Remove from AppData
+        AppData.chats = AppData.chats.filter(chat => 
+            chat.participant.id !== userId && 
+            chat.participant.name.toLowerCase() !== userNameOrId.toLowerCase()
+        );
+        this.messages = this.messages.filter(chat => 
+            chat.participant.id !== userId && 
+            chat.participant.name.toLowerCase() !== userNameOrId.toLowerCase()
+        );
+        
+        // Delete from database
+        for (const chat of chatsToDelete) {
+            await Database.deleteChat(chat.id);
+        }
+        
+        console.log(`Cleared ${chatsToDelete.length} chats for user: ${userNameOrId}`);
+        return chatsToDelete.length;
     }
 };
 
