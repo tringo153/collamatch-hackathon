@@ -353,7 +353,7 @@ const Browse = {
                     
                     if (userProjects.length > 0) {
                         // Show project selection modal
-                        this.showProjectMatchModal(user, userProjects);
+                        Modal.showProjectMatchModal(user, userProjects);
                         return;
                     }
                 }
@@ -579,6 +579,9 @@ const Browse = {
     },
     
     selectProjectForMatch(userId, projectId) {
+        // Close the project match modal first
+        Modal.closeProjectMatch();
+        // Then process the like
         const project = AppData.projects.find(p => p.id === projectId);
         this.processLike(userId, 'user', project);
     },

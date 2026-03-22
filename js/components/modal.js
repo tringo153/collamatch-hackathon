@@ -780,25 +780,29 @@ const Modal = {
         
         const { user } = this._pendingMatch;
         
-        // Add to current user's likesReceived (to track that we skipped this user)
+        // Add to target user's likesReceived (so they see currUser in their People tab)
         const currentUserActualId = AppData.currentUser.originalId || (AppData.currentUser.id === 'current' ? 'user-1' : AppData.currentUser.id);
         
-        if (!AppData.currentUser.likesReceived) {
-            AppData.currentUser.likesReceived = [];
+        // Find the target user (the one we're skipping)
+        const targetUser = AppData.collaborators.find(u => u.id === user.id);
+        if (targetUser) {
+            if (!targetUser.likesReceived) {
+                targetUser.likesReceived = [];
+            }
+            targetUser.likesReceived.push({
+                fromId: currentUserActualId,
+                fromType: 'user',
+                timestamp: new Date().toISOString()
+            });
+            // Save to database
+            await Database.saveCollaborator(targetUser);
         }
-        AppData.currentUser.likesReceived.push({
-            fromId: user.id,
-            fromType: 'user',
-            timestamp: new Date().toISOString()
-        });
-        
-        // Save to database
-        await Database.saveCurrentUser(AppData.currentUser);
         
         // Clear pending match
         this._pendingMatch = null;
         
-        // Close the modal
+        // Close the modal (try both methods to ensure it closes)
+        this.closeProjectMatch();
         this.closeMatch();
     },
 
@@ -1094,6 +1098,88 @@ const Modal = {
     close() {
         const container = document.getElementById('modal-container');
         container.innerHTML = '';
+    },
+
+    // Show project match modal (called from Browse.handleAction when user clicks Match)
+    showProjectMatchModal(user, userProjects) {
+        // Store pending match
+        this._pendingMatch = { user, userProjects };
+        
+        // Calculate match scores for each project
+        const projectsWithScore = userProjects.map(project => {
+            return {
+                project: project,
+                score: Browse.calculateMatchScore(project, user)
+            };
+        });
+        
+        // Sort by score (highest first)
+        projectsWithScore.sort((a, b) => b.score - a.score);
+        
+        let projectsHTML = projectsWithScore.map(({project, score}) => {
+            const matchPercentage = Math.min(100, score * 10);
+            const isHighMatch = score >= 5;
+            
+            return `
+                <div onclick="Browse.selectProjectForMatch('${user.id}', '${project.id}')" class="bg-white rounded-xl p-4 shadow-sm cursor-pointer hover:shadow-md transition ${isHighMatch ? 'border-2 border-green-500' : ''}">
+                    <div class="flex items-center justify-between mb-2">
+                        <h3 class="font-semibold text-gray-800">${project.title}</h3>
+                        ${isHighMatch ? '<span class="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full">Best Match!</span>' : ''}
+                    </div>
+                    <p class="text-sm text-gray-600 line-clamp-2 mb-2">${project.description || 'No description'}</p>
+                    <div class="flex items-center justify-between">
+                        <div class="flex gap-1">
+                            ${(project.workStyle || []).slice(0, 2).map(style => 
+                                `<span class="px-2 py-0.5 bg-purple-50 text-purple-700 rounded-full text-xs">${style}</span>`
+                            ).join('')}
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <div class="w-16 h-2 bg-gray-200 rounded-full overflow-hidden">
+                                <div class="h-full bg-green-500 rounded-full" style="width: ${matchPercentage}%"></div>
+                            </div>
+                            <span class="text-xs text-gray-500">${score} match</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+        
+        const html = `
+            <div class="modal-overlay" onclick="event.target === this && Modal.closeProjectMatch()">
+                <div class="modal-content w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
+                    <button onclick="Modal.closeProjectMatch()" class="absolute top-4 right-4 w-10 h-10 bg-white rounded-full shadow-lg flex items-center justify-center text-gray-500 hover:text-gray-700 z-10">
+                        <i class="ph ph-x text-xl"></i>
+                    </button>
+                    
+                    <div class="p-6">
+                        <div class="text-center mb-6">
+                            <div class="w-16 h-16 mx-auto mb-3 rounded-full overflow-hidden">
+                                <img src="${user.photo || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(user.name || 'U') + '&background=6366f1&color=fff&size=128&font-size=0.4&length=1'}" alt="${user.name}" class="w-full h-full object-cover">
+                            </div>
+                            <h2 class="text-xl font-bold text-gray-800">Match ${user.name} with a Project</h2>
+                            <p class="text-gray-500 text-sm">Select which of your projects matches best with this person</p>
+                        </div>
+                        
+                        <div class="space-y-3 mb-4">
+                            ${projectsHTML}
+                        </div>
+                        
+                        <button onclick="Modal.skipProjectMatch()" class="w-full py-3 border-2 border-gray-300 text-gray-600 font-semibold rounded-xl hover:bg-gray-50 transition">
+                            Skip - Like without a Project
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        const container = document.getElementById('modal-container');
+        container.innerHTML = html;
+    },
+    
+    closeProjectMatch() {
+        const container = document.getElementById('modal-container');
+        container.innerHTML = '';
+        this._pendingMatch = null;
     },
 
     closeMatch() {
