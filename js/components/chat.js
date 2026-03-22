@@ -85,7 +85,7 @@ const Chat = {
             html += `
                 <div onclick="Chat.openChat('${chat.id}')" class="bg-white rounded-xl p-4 shadow-sm flex items-center gap-4 cursor-pointer hover:shadow-md transition ${isUnread ? 'border-l-4 border-indigo-500' : ''} ${isExpiring ? 'border-l-4 border-amber-500' : ''}">
                     <div class="relative">
-                        <img src="${chat.participant.photo || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(chat.participant.name || 'U') + '&background=6366f1&color=fff&size=128&font-size=0.4&length=1'}" alt="${chat.participant.name}" class="w-14 h-14 rounded-full object-cover">
+                        <img src="${chat.participant?.photo || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(chat.participant?.name || 'U') + '&background=6366f1&color=fff&size=128&font-size=0.4&length=1'}" alt="${chat.participant?.name || 'User'}" class="w-14 h-14 rounded-full object-cover">
                         ${isExpiring ? 
                             `<span class="absolute -top-1 -right-1 w-5 h-5 bg-amber-500 rounded-full border-2 border-white flex items-center justify-center"><i class="ph ph-clock text-white text-xs"></i></span>` :
                             `<span class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></span>`
@@ -93,10 +93,10 @@ const Chat = {
                     </div>
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center justify-between">
-                            <h3 class="font-semibold text-gray-800 ${isUnread ? '' : 'font-normal'}">${chat.participant.name}</h3>
+                            <h3 class="font-semibold text-gray-800 ${isUnread ? '' : 'font-normal'}">${chat.participant?.name || 'User'}</h3>
                             <span class="text-xs ${isExpiring ? 'text-amber-600 font-medium' : 'text-gray-400'}">${hoursLeft}h left</span>
                         </div>
-                        <p class="text-xs text-indigo-600 font-medium">${chat.project ? chat.project.title : 'Match'}</p>
+                        <p class="text-xs text-indigo-600 font-medium">${chat.project?.title || 'Match'}</p>
                         <p class="text-sm text-gray-600 truncate">${lastMessageText}</p>
                     </div>
                     ${isUnread ? `<span class="w-5 h-5 bg-indigo-600 text-white text-xs rounded-full flex items-center justify-center">${chat.unread}</span>` : ''}
@@ -212,12 +212,12 @@ const Chat = {
                         <i class="ph ph-arrow-left text-xl"></i>
                     </button>
                     <div class="relative">
-                        <img src="${chat.participant.photo || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(chat.participant.name || 'U') + '&background=6366f1&color=fff&size=100&font-size=0.4&length=1'}" alt="${chat.participant.name}" class="w-10 h-10 rounded-full object-cover">
+                        <img src="${chat.participant?.photo || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(chat.participant?.name || 'U') + '&background=6366f1&color=fff&size=100&font-size=0.4&length=1'}" alt="${chat.participant?.name || 'User'}" class="w-10 h-10 rounded-full object-cover">
                         <span class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></span>
                     </div>
                     <div class="flex-1">
-                        <h3 class="font-semibold text-gray-800">${chat.participant.name}</h3>
-                        <p class="text-xs text-indigo-600">${chat.project ? chat.project.title : 'Match'}</p>
+                        <h3 class="font-semibold text-gray-800">${chat.participant?.name || 'User'}</h3>
+                        <p class="text-xs text-indigo-600">${chat.project?.title || 'Match'}</p>
                     </div>
                 </div>
                 
@@ -369,18 +369,27 @@ const Chat = {
         const chat = this.messages.find(c => c.id === chatId);
         if (!chat) return;
         
+        // Guard: ensure participant exists
+        if (!chat.participant) {
+            console.error('Chat has no participant:', chat);
+            return;
+        }
+        
         // Update chat status
         chat.status = 'continued';
         
         // Get current user's contact info
         const userContact = AppData.currentUser.contact || { email: '', linkedin: '', twitter: '' };
         
+        // Get participant name with fallback
+        const participantName = chat.participant?.name || 'User';
+        
         // Simulate exchange (in real app, this would be mutual)
         chat.contactExchanged = {
-            name: chat.participant.name,
-            email: chat.participant.name.toLowerCase().replace(' ', '.') + '@example.com',
-            linkedin: 'linkedin.com/in/' + chat.participant.name.toLowerCase().replace(' ', '-'),
-            twitter: '@' + chat.participant.name.toLowerCase().replace(' ', '')
+            name: participantName,
+            email: participantName.toLowerCase().replace(' ', '.') + '@example.com',
+            linkedin: 'linkedin.com/in/' + participantName.toLowerCase().replace(' ', '-'),
+            twitter: '@' + participantName.toLowerCase().replace(' ', '')
         };
         
         // Add system message
